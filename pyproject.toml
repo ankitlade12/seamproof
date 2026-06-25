@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "seamproof"
+version = "0.1.0"
+description = "The seam tester for agentic processes — assert the agent → robot → human handoffs and gate the release."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Ankit Lade" }]
+keywords = ["uipath", "agentic", "testing", "rpa", "ai-agents", "release-gate", "observability"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+seamproof = "seamproof.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ankitlade12/seamproof"
+Repository = "https://github.com/ankitlade12/seamproof"
+Issues = "https://github.com/ankitlade12/seamproof/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/seamproof"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
