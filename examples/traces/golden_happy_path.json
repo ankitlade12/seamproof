@@ -1,0 +1,48 @@
+{
+  "trace_id": "run-golden-001",
+  "process": "invoice-exception-handling",
+  "started_at": "2026-06-25T14:00:00Z",
+  "finished_at": "2026-06-25T14:00:42Z",
+  "context": {
+    "po": { "number": "PO-88231", "currency": "USD", "vendor_id": "V-1042" },
+    "approved_vendor_master": ["V-1042", "V-1043", "V-2001", "V-3300"],
+    "auto_post_ceiling": 10000,
+    "human_review_floor": 9000,
+    "min_confidence": 0.90,
+    "sla": { "max_cost_usd": 0.05, "max_cycle_seconds": 120 }
+  },
+  "events": [
+    {
+      "id": "e1", "seq": 1, "actor": "recon-agent", "actor_type": "agent",
+      "type": "agent.output", "timestamp": "2026-06-25T14:00:10Z",
+      "attributes": {
+        "confidence": 0.97, "vendor_id": "V-1042", "amount": 4200.00,
+        "currency": "USD", "exception_flagged": false,
+        "line_items": [{ "sku": "A1", "amount": 1200.00 }, { "sku": "B2", "amount": 3000.00 }]
+      }
+    },
+    {
+      "id": "e2", "seq": 2, "actor": "router", "actor_type": "router",
+      "type": "routing.decision", "timestamp": "2026-06-25T14:00:12Z",
+      "attributes": { "route": "auto-post", "reason": "amount<floor, confidence>=min, no exception" }
+    },
+    {
+      "id": "e3", "seq": 3, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.input", "timestamp": "2026-06-25T14:00:13Z",
+      "attributes": {
+        "vendor_id": "V-1042", "amount": 4200.00, "currency": "USD",
+        "line_items": [{ "sku": "A1", "amount": 1200.00 }, { "sku": "B2", "amount": 3000.00 }]
+      }
+    },
+    {
+      "id": "e4", "seq": 4, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.action", "timestamp": "2026-06-25T14:00:40Z",
+      "attributes": { "system": "mock-erp", "operation": "post_invoice", "status": "success", "posted_amount": 4200.00 }
+    },
+    {
+      "id": "e5", "seq": 5, "actor": "system", "actor_type": "system",
+      "type": "run.metrics", "timestamp": "2026-06-25T14:00:42Z",
+      "attributes": { "cost_usd": 0.012, "cycle_seconds": 42, "model": "claude-sonnet-4-6" }
+    }
+  ]
+}

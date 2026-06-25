@@ -1,0 +1,50 @@
+{
+  "trace_id": "run-seam2-injected",
+  "process": "invoice-exception-handling",
+  "started_at": "2026-06-25T16:40:00Z",
+  "finished_at": "2026-06-25T16:40:51Z",
+  "context": {
+    "po": { "number": "PO-77450", "currency": "USD", "vendor_id": "V-2001" },
+    "approved_vendor_master": ["V-1042", "V-1043", "V-2001", "V-3300"],
+    "auto_post_ceiling": 10000,
+    "human_review_floor": 9000,
+    "min_confidence": 0.90,
+    "sla": { "max_cost_usd": 0.05, "max_cycle_seconds": 120 }
+  },
+  "events": [
+    {
+      "id": "e1", "seq": 1, "actor": "recon-agent", "actor_type": "agent",
+      "type": "agent.output", "timestamp": "2026-06-25T16:40:10Z",
+      "comment": "INJECTED: $9,950 sits in the human-review band ($9,000-$10,000).",
+      "attributes": {
+        "confidence": 0.94, "vendor_id": "V-2001", "amount": 9950.00,
+        "currency": "USD", "exception_flagged": false,
+        "line_items": [{ "sku": "E5", "amount": 4950.00 }, { "sku": "F6", "amount": 5000.00 }]
+      }
+    },
+    {
+      "id": "e2", "seq": 2, "actor": "router", "actor_type": "router",
+      "type": "routing.decision", "timestamp": "2026-06-25T16:40:12Z",
+      "comment": "BUG: routed straight to auto-post; the human checkpoint was skipped.",
+      "attributes": { "route": "auto-post", "reason": "amount<ceiling (boundary case misrouted)" }
+    },
+    {
+      "id": "e3", "seq": 3, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.input", "timestamp": "2026-06-25T16:40:13Z",
+      "attributes": {
+        "vendor_id": "V-2001", "amount": 9950.00, "currency": "USD",
+        "line_items": [{ "sku": "E5", "amount": 4950.00 }, { "sku": "F6", "amount": 5000.00 }]
+      }
+    },
+    {
+      "id": "e4", "seq": 4, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.action", "timestamp": "2026-06-25T16:40:49Z",
+      "attributes": { "system": "mock-erp", "operation": "post_invoice", "status": "success", "posted_amount": 9950.00 }
+    },
+    {
+      "id": "e5", "seq": 5, "actor": "system", "actor_type": "system",
+      "type": "run.metrics", "timestamp": "2026-06-25T16:40:51Z",
+      "attributes": { "cost_usd": 0.021, "cycle_seconds": 51, "model": "claude-sonnet-4-6" }
+    }
+  ]
+}

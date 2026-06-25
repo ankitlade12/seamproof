@@ -1,0 +1,58 @@
+{
+  "trace_id": "run-golden-002",
+  "process": "invoice-exception-handling",
+  "started_at": "2026-06-25T15:10:00Z",
+  "finished_at": "2026-06-25T15:11:35Z",
+  "context": {
+    "po": { "number": "PO-90115", "currency": "USD", "vendor_id": "V-1043" },
+    "approved_vendor_master": ["V-1042", "V-1043", "V-2001", "V-3300"],
+    "auto_post_ceiling": 10000,
+    "human_review_floor": 9000,
+    "min_confidence": 0.90,
+    "sla": { "max_cost_usd": 0.05, "max_cycle_seconds": 120 }
+  },
+  "events": [
+    {
+      "id": "e1", "seq": 1, "actor": "recon-agent", "actor_type": "agent",
+      "type": "agent.output", "timestamp": "2026-06-25T15:10:11Z",
+      "attributes": {
+        "confidence": 0.93, "vendor_id": "V-1043", "amount": 12000.00,
+        "currency": "USD", "exception_flagged": false,
+        "line_items": [{ "sku": "C3", "amount": 7000.00 }, { "sku": "D4", "amount": 5000.00 }]
+      }
+    },
+    {
+      "id": "e2", "seq": 2, "actor": "router", "actor_type": "router",
+      "type": "routing.decision", "timestamp": "2026-06-25T15:10:13Z",
+      "attributes": { "route": "human-review", "reason": "amount>=ceiling requires approval" }
+    },
+    {
+      "id": "e3", "seq": 3, "actor": "approver", "actor_type": "human",
+      "type": "human.task", "timestamp": "2026-06-25T15:10:20Z",
+      "attributes": { "queue": "ap-exceptions", "status": "pending" }
+    },
+    {
+      "id": "e4", "seq": 4, "actor": "approver", "actor_type": "human",
+      "type": "human.decision", "timestamp": "2026-06-25T15:11:05Z",
+      "attributes": { "status": "approved", "approver": "j.okafor", "note": "PO and receipt match" }
+    },
+    {
+      "id": "e5", "seq": 5, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.input", "timestamp": "2026-06-25T15:11:06Z",
+      "attributes": {
+        "vendor_id": "V-1043", "amount": 12000.00, "currency": "USD",
+        "line_items": [{ "sku": "C3", "amount": 7000.00 }, { "sku": "D4", "amount": 5000.00 }]
+      }
+    },
+    {
+      "id": "e6", "seq": 6, "actor": "posting-robot", "actor_type": "robot",
+      "type": "robot.action", "timestamp": "2026-06-25T15:11:33Z",
+      "attributes": { "system": "mock-erp", "operation": "post_invoice", "status": "success", "posted_amount": 12000.00 }
+    },
+    {
+      "id": "e7", "seq": 7, "actor": "system", "actor_type": "system",
+      "type": "run.metrics", "timestamp": "2026-06-25T15:11:35Z",
+      "attributes": { "cost_usd": 0.031, "cycle_seconds": 95, "model": "claude-sonnet-4-6" }
+    }
+  ]
+}

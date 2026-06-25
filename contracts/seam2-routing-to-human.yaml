@@ -1,0 +1,34 @@
+# Seam 2 — Routing -> Human (skipped checkpoint)
+#
+# Policy requires a human approval for high-value, low-confidence, or flagged
+# invoices. Output variability or a boundary case can route such work *around*
+# the approval that policy required, and the dangerous case auto-completes.
+id: seam-2
+name: Routing to Human checkpoint
+description: >
+  Asserts that when policy demanded a human approval, the trace actually
+  contains an approved human decision that fired before the robot posted.
+severity: blocking
+boundary:
+  from: router
+  to: approver
+handoff:
+  source: { type: agent.output }
+assertions:
+  - id: human-approval-when-required
+    kind: requires_event
+    description: >
+      When the invoice is at/above the human-review floor, below the confidence
+      threshold, or flagged as an exception, an approved human decision must
+      exist before the robot posts.
+    when:
+      any:
+        - { gte: [ { ref: handoff.amount }, { ref: context.human_review_floor } ] }
+        - { lt: [ { ref: handoff.confidence }, { ref: context.min_confidence } ] }
+        - { eq: [ { ref: handoff.exception_flagged }, true ] }
+    event:
+      actor_type: human
+      type: human.decision
+      where: { status: approved }
+    before:
+      type: robot.action

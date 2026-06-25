@@ -1,0 +1,49 @@
+# SeamProof scenario suite for the invoice-exception process.
+#
+# Each scenario pairs a run trace with the gate outcome it must produce. The
+# golden traces must pass; each injected-failure trace must trip exactly its
+# seam. The test suite (tests/test_scenarios.py) drives the engine over this
+# file, so the suite doubles as living documentation and as regression coverage.
+suite: invoice-exception-handling
+contracts: contracts
+scenarios:
+  - id: golden-happy-path
+    description: Clean low-value invoice; no human approval required.
+    trace: examples/traces/golden_happy_path.json
+    expect:
+      decision: GO
+      blocking_failures: []
+      advisory_failures: []
+
+  - id: golden-human-approved
+    description: High-value invoice correctly routed to a human and approved before posting.
+    trace: examples/traces/golden_human_approved.json
+    expect:
+      decision: GO
+      blocking_failures: []
+      advisory_failures: []
+
+  - id: seam1-silent-corruption
+    description: Agent emits a valid-but-wrong total; the robot would post the wrong figure.
+    trace: examples/traces/seam1_amount_mismatch.json
+    expect:
+      decision: NO-GO
+      blocking_failures: [seam-1]
+      failed_assertions: [amount-equals-line-items]
+
+  - id: seam2-skipped-checkpoint
+    description: A $9,950 invoice in the review band auto-posts around the human approval.
+    trace: examples/traces/seam2_skipped_approval.json
+    expect:
+      decision: NO-GO
+      blocking_failures: [seam-2]
+      failed_assertions: [human-approval-when-required]
+
+  - id: seam3-cost-regression
+    description: A model swap doubles cost-per-run and cycle time; advisory only.
+    trace: examples/traces/seam3_cost_regression.json
+    expect:
+      decision: GO
+      blocking_failures: []
+      advisory_failures: [seam-3]
+      failed_assertions: [cost-within-slo, cycle-within-slo]

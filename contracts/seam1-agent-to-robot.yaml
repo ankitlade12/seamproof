@@ -1,0 +1,43 @@
+# Seam 1 — Agent -> Robot (silent corruption)
+#
+# The posting robot faithfully executes whatever the recon agent hands it. A
+# schema check passes on structurally valid JSON, but the business outcome can
+# still be wrong (right shape, wrong number). This contract pins the invariants
+# the robot cannot verify on its own.
+id: seam-1
+name: Agent to Robot data contract
+description: >
+  Invariants the posting robot depends on but cannot check itself. Catches a
+  structurally valid but semantically wrong handoff before it reaches the ERP.
+severity: blocking
+boundary:
+  from: recon-agent
+  to: posting-robot
+handoff:
+  source: { type: robot.input }
+assertions:
+  - id: amount-equals-line-items
+    kind: equals
+    description: Posted amount must equal the sum of the invoice line items.
+    left: { ref: handoff.amount }
+    right: { ref: "handoff.line_items[*].amount", reduce: sum }
+    tolerance: 0.005
+
+  - id: currency-matches-po
+    kind: equals
+    description: Invoice currency must match the purchase-order currency.
+    left: { ref: handoff.currency }
+    right: { ref: context.po.currency }
+
+  - id: vendor-in-master
+    kind: in_set
+    description: Vendor must exist in the approved vendor master.
+    value: { ref: handoff.vendor_id }
+    set: { ref: context.approved_vendor_master }
+
+  - id: amount-positive
+    kind: range
+    description: Posted amount must be a positive number.
+    value: { ref: handoff.amount }
+    min: 0
+    exclusive_min: true

@@ -1,0 +1,28 @@
+# Seam 3 — Non-functional (cost / cycle-time drift)
+#
+# A prompt or model change can quietly double cost-per-run or push the
+# end-to-end process past its cycle-time SLO. This seam catches the regression.
+# It is *advisory*: it reports the drift without blocking the release, the way a
+# FinOps guardrail warns before it enforces.
+id: seam-3
+name: Cost and cycle-time SLO
+description: >
+  Flags non-functional regressions in cost-per-run and end-to-end cycle time
+  against the process SLO. Advisory severity: reports without gating.
+severity: advisory
+boundary:
+  from: process
+  to: finops
+handoff: {}
+assertions:
+  - id: cost-within-slo
+    kind: range
+    description: Cost per run must stay within budget.
+    value: { ref: metrics.cost_usd }
+    max: { ref: context.sla.max_cost_usd }
+
+  - id: cycle-within-slo
+    kind: range
+    description: End-to-end cycle time must stay within the SLO.
+    value: { ref: metrics.cycle_seconds }
+    max: { ref: context.sla.max_cycle_seconds }
