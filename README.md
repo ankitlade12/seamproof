@@ -154,17 +154,20 @@ seamproof check -c contracts --otel examples/otel/maestro_seam1_export.json
 # …or normalise the export to a SeamProof trace first
 seamproof ingest --otel examples/otel/maestro_seam1_export.json -o trace.json
 
-# Publish the gate result to Test Manager (--dry-run prints the exact payload)
-export UIPATH_URL=https://cloud.uipath.com UIPATH_ACCESS_TOKEN=… UIPATH_PROJECT_ID=…
-seamproof publish -c contracts --otel examples/otel/maestro_seam1_export.json --dry-run
+# Publish the gate result to Test Manager (--dry-run prints the exact request plan)
+uipath auth   # or set UIPATH_URL + UIPATH_ACCESS_TOKEN
+seamproof publish -c contracts --otel examples/otel/maestro_seam1_export.json \
+  --project <PROJECT_ID> --container <SECTION_ID> --dry-run
 ```
 
 Authentication uses UiPath's standard credentials. With the official SDK
 installed (`pip install "seamproof[uipath]"`), publishing goes through
 `uipath.platform.UiPath`, which handles auth and org/tenant scoping; without it,
 SeamProof falls back to a stdlib REST call using `UIPATH_URL` +
-`UIPATH_ACCESS_TOKEN`. Everything is testable offline via `--dry-run` and the
-bundled OTLP fixture, so it's ready to point at a tenant the moment you have one.
+`UIPATH_ACCESS_TOKEN`. The publisher targets the real Test Manager **v2** API
+(execution → per-seam logs → results → finish); everything is testable offline via
+`--dry-run` and the bundled OTLP fixture. Full runbook:
+[docs/publish-to-test-manager.md](docs/publish-to-test-manager.md).
 
 Need a real trace to feed it? The system under test ships as a runnable **UiPath
 coded automation** in [`sut/automation/`](sut/automation/) — `uipath run process

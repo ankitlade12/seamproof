@@ -21,6 +21,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Maestro build guide** (`docs/maestro-build.md`) and paste-ready Agent Builder
   artifacts (`sut/agent/`, `sut/data/`) for the low-code build of the same process.
 
+### Changed
+- Rewrote the Test Manager publisher to the real **v2** API (create test cases →
+  `ThirdParty` execution → per-seam logs → `override-result` Passed/Failed →
+  finish), verified against a live tenant's Swagger. The SDK transport now uses the
+  `uipath auth` session; `--dry-run` prints the full request plan. New flags:
+  `--org`, `--tenant`, `--container`, `--testcase-map`. Runbook:
+  `docs/publish-to-test-manager.md`.
+
 ## [0.2.0] - 2026-06-25
 
 UiPath integration — connect the engine to Automation Cloud at both ends.

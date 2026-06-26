@@ -161,15 +161,14 @@ input/action, and run metrics, and drop them into a trace JSON shaped like
 seamproof check -c contracts -t run.json
 ```
 
-Then publish the verdict to Test Manager:
+Then publish the verdict to Test Manager (full runbook:
+[docs/publish-to-test-manager.md](publish-to-test-manager.md)):
 
 ```bash
-export UIPATH_URL=https://staging.uipath.com
-export UIPATH_ACCESS_TOKEN=…            # from a Test Manager / external-app token
-export UIPATH_ORGANIZATION_ID=hackathon26_1024
-export UIPATH_TENANT_NAME=DefaultTenant
-export UIPATH_PROJECT_ID=…              # your Test Manager project
-seamproof publish -c contracts -t run.json --dry-run   # preview, then drop --dry-run
+uipath auth     # sign in to staging.uipath.com / hackathon26_1024
+seamproof publish -c contracts -t run.json \
+  --base-url https://staging.uipath.com --org hackathon26_1024 --tenant DefaultTenant \
+  --project <PROJECT_ID> --container <SECTION_ID> --dry-run   # preview, then drop --dry-run
 ```
 
 - ✅ **Done:** `golden` → **GATE: GO**; `seam1_corruption` → **NO-GO (seam-1)**;
