@@ -6,6 +6,15 @@ to demonstrate the engine — it works from the exported run traces in
 [`../examples/traces/`](../examples/traces/) — but the SUT is what produces those
 traces in production.
 
+## Build it
+
+Step-by-step build guide: [`docs/maestro-build.md`](../docs/maestro-build.md).
+Paste-ready artifacts for the portal:
+
+- [`agent/schemas.json`](agent/schemas.json) — Agent Builder input/output schemas.
+- [`agent/recon-agent.md`](agent/recon-agent.md) — the agent's system/user prompts.
+- [`data/invoices.json`](data/invoices.json) — the three test invoices (golden + one per seam).
+
 ## The process
 
 A procure-to-pay slice with one agent, one robot, and one human:

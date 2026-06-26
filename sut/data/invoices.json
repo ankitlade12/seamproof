@@ -1,0 +1,32 @@
+{
+  "_comment": "Test inputs for the recon agent / Maestro process. `context` holds the process policy (vendor master, ceilings, SLOs) — set these as Maestro process variables. Each case under `cases` is one agent run; feed invoice_text/po/receipt as the agent's input arguments.",
+  "context": {
+    "approved_vendor_master": ["V-1042", "V-1043", "V-2001", "V-3300"],
+    "auto_post_ceiling": 10000,
+    "human_review_floor": 9000,
+    "min_confidence": 0.90,
+    "sla": { "max_cost_usd": 0.05, "max_cycle_seconds": 120 }
+  },
+  "cases": {
+    "golden": {
+      "expected_gate": "GO",
+      "invoice_text": "INVOICE\nVendor: Acme Supplies (V-1042)\nCurrency: USD\nLine items:\n  A1  Widget assembly ......  1,200.00\n  B2  Gadget kit ...........  3,000.00\nTOTAL DUE: USD 4,200.00",
+      "po": { "number": "PO-88231", "currency": "USD", "vendor_id": "V-1042", "amount": 4200.00 },
+      "receipt": { "received": true, "items": ["A1", "B2"] }
+    },
+    "seam1_corruption": {
+      "expected_gate": "NO-GO (seam-1)",
+      "note": "Printed TOTAL (5,400) is transposed and does not equal the line-item sum (4,200). A faithful agent extracts the printed total; the robot would post 5,400. SeamProof catches it at the agent->robot seam.",
+      "invoice_text": "INVOICE\nVendor: Acme Supplies (V-1042)\nCurrency: USD\nLine items:\n  A1  Widget assembly ......  1,200.00\n  B2  Gadget kit ...........  3,000.00\nTOTAL DUE: USD 5,400.00",
+      "po": { "number": "PO-88231", "currency": "USD", "vendor_id": "V-1042", "amount": 4200.00 },
+      "receipt": { "received": true, "items": ["A1", "B2"] }
+    },
+    "seam2_near_ceiling": {
+      "expected_gate": "NO-GO (seam-2)",
+      "note": "Amount 9,950 sits in the human-review band (9,000-10,000). If the routing gateway is (mis)configured to use only the hard ceiling (10,000), this auto-posts around the human approval policy required. SeamProof knows the review floor is 9,000 and fails the gate.",
+      "invoice_text": "INVOICE\nVendor: Northwind Traders (V-2001)\nCurrency: USD\nLine items:\n  E5  Server rack ..........  4,950.00\n  F6  Network switch .......  5,000.00\nTOTAL DUE: USD 9,950.00",
+      "po": { "number": "PO-77450", "currency": "USD", "vendor_id": "V-2001", "amount": 9950.00 },
+      "receipt": { "received": true, "items": ["E5", "F6"] }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "_comment": "Paste these into UiPath Agent Builder. Open the recon agent → Data Manager → Input schema tab → 'Edit raw schema' → paste `input`; then Output schema tab → 'Edit raw schema' → paste `output`. The output property names match exactly what SeamProof's seam-1/seam-2 contracts read from the agent.output span (vendor_id, amount, currency, line_items[].amount, confidence, exception_flagged).",
+  "input": {
+    "type": "object",
+    "properties": {
+      "invoice_text": {
+        "type": "string",
+        "description": "The raw invoice document text to reconcile."
+      },
+      "po": {
+        "type": "object",
+        "description": "The purchase order this invoice should match.",
+        "properties": {
+          "number": { "type": "string" },
+          "currency": { "type": "string" },
+          "vendor_id": { "type": "string" },
+          "amount": { "type": "number" }
+        },
+        "required": ["number", "currency", "vendor_id", "amount"]
+      },
+      "receipt": {
+        "type": "object",
+        "description": "The goods/services receipt for three-way matching.",
+        "properties": {
+          "received": { "type": "boolean" },
+          "items": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["received"]
+      }
+    },
+    "required": ["invoice_text", "po"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "vendor_id": {
+        "type": "string",
+        "description": "The vendor identifier extracted from the invoice (e.g. V-1042)."
+      },
+      "amount": {
+        "type": "number",
+        "description": "The invoice TOTAL exactly as printed on the document. Do not recompute it from the line items."
+      },
+      "currency": {
+        "type": "string",
+        "description": "ISO currency code of the invoice (e.g. USD)."
+      },
+      "line_items": {
+        "type": "array",
+        "description": "Each invoice line item, listed separately.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": "string" },
+            "amount": { "type": "number" }
+          },
+          "required": ["sku", "amount"]
+        }
+      },
+      "confidence": {
+        "type": "number",
+        "description": "Extraction confidence in [0,1]; lower it when the document is ambiguous or hard to read."
+      },
+      "exception_flagged": {
+        "type": "boolean",
+        "description": "true if you detect any discrepancy versus the PO or receipt (vendor, currency, totals, or missing receipt)."
+      }
+    },
+    "required": ["vendor_id", "amount", "currency", "line_items", "confidence", "exception_flagged"]
+  }
+}
