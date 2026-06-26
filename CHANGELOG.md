@@ -13,6 +13,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`UiPath().llm.chat_completions`), and OTLP emission that SeamProof gates. Runs
   through `uipath run` in the tenant or fully offline (`python main.py`), and is
   regression-tested end to end (SUT → OTLP → gate) in `tests/test_sut_automation.py`.
+- The automation's human step creates a real **UiPath Action Center** task
+  (`UiPath().tasks.create`) when `use_action_center` is set, with a `high_value`
+  case that routes through the approval; offline it simulates the decision.
+- A native **`uipath eval`** set (`sut/automation/evaluations/`) quality-tests the
+  recon agent's extraction with a JSON-similarity evaluator (all cases score 1.0).
 - **Maestro build guide** (`docs/maestro-build.md`) and paste-ready Agent Builder
   artifacts (`sut/agent/`, `sut/data/`) for the low-code build of the same process.
 
