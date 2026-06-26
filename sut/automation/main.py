@@ -118,6 +118,7 @@ _RECON_SYSTEM = (
 class ProcessInput:
     case: str = "golden"
     use_llm: bool = False               # recon via the UiPath LLM Gateway
+    use_langchain: bool = False         # recon via an external LangChain agent
     use_action_center: bool = False     # create a real Action Center task at the human step
     route_mode: str | None = None       # override the case's routing mode
     out: str | None = None              # write the OTLP doc here when set
@@ -182,8 +183,16 @@ def _llm_recon(invoice_text: str, po: dict[str, Any], model: str | None) -> dict
 
 
 @traced(name="reconcile", span_type="agent")
-def reconcile(case: dict[str, Any], use_llm: bool, model: str | None = None) -> dict[str, Any]:
+def reconcile(
+    case: dict[str, Any], use_llm: bool, model: str | None = None, use_langchain: bool = False
+) -> dict[str, Any]:
     """The recon agent: extract and reconcile the invoice (agent.output)."""
+    if use_langchain:
+        try:
+            import recon_langchain
+            return recon_langchain.reconcile(case["invoice_text"], case["po"])
+        except Exception:
+            pass  # external LangChain agent unavailable -> fall through
     if use_llm:
         try:
             return _llm_recon(case["invoice_text"], case["po"], model)
@@ -318,7 +327,7 @@ def process(input: ProcessInput) -> ProcessOutput:
         raise ValueError(f"unknown case {input.case!r}; choose from {list(CASES)}")
     route_mode = input.route_mode or case["route_mode"]
 
-    recon = reconcile(case, input.use_llm)
+    recon = reconcile(case, input.use_llm, use_langchain=input.use_langchain)
     routing = route(recon, route_mode)
 
     spans: list[tuple[str, dict[str, Any]]] = [

@@ -18,6 +18,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   case that routes through the approval; offline it simulates the decision.
 - A native **`uipath eval`** set (`sut/automation/evaluations/`) quality-tests the
   recon agent's extraction with a JSON-similarity evaluator (all cases score 1.0).
+- An external **LangChain** recon agent (`sut/automation/recon_langchain.py`,
+  enabled with `use_langchain`) — a `prompt | llm | JSON parser` chain whose
+  default model is **UiPathChat** (the UiPath LLM Gateway as a LangChain model via
+  `uipath-langchain`). Targets the cross-platform integration award; SeamProof
+  gates its output identically.
 - **Maestro build guide** (`docs/maestro-build.md`) and paste-ready Agent Builder
   artifacts (`sut/agent/`, `sut/data/`) for the low-code build of the same process.
 

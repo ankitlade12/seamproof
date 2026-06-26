@@ -68,9 +68,20 @@ All three extraction cases score `1.0`. This is the agent-quality counterpart to
 SeamProof's seam tests: `uipath eval` checks the agent in isolation, SeamProof
 checks the handoffs around it.
 
-## Cross-platform note
+## Cross-platform: external LangChain agent
 
-`reconcile()` is provider-agnostic: swap the deterministic/UiPath-LLM extractor
-for an external **LangChain** agent and the rest of the automation — routing,
-human task, robot post, and OTLP emission — is unchanged. That external-agent
-path is what targets the Most Innovative Cross-Platform Integration award.
+Pass `"use_langchain": true` to run the recon step as an external **LangChain**
+chain ([`recon_langchain.py`](recon_langchain.py)) — `prompt | llm | JSON parser`
+— whose default model is **UiPathChat**, the UiPath LLM Gateway exposed as a
+LangChain chat model via `uipath-langchain`. So a LangChain agent runs *through*
+UiPath's AI Trust Layer, and any LangChain `BaseChatModel` (`ChatAnthropic`, …)
+can be injected instead. Routing, the human task, the robot post, and OTLP
+emission are unchanged, and SeamProof gates the output identically.
+
+```bash
+pip install ".[langchain]"
+uipath run process '{"case": "seam1_corruption", "use_langchain": true}'
+```
+
+This is the Most Innovative Cross-Platform Integration path — an external agent
+framework orchestrated by UiPath.
