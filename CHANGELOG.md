@@ -6,6 +6,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-25
+
+UiPath integration — connect the engine to Automation Cloud at both ends.
+
+### Added
+- `ingest.py`: ingest a UiPath Maestro **OpenTelemetry** (OTLP/JSON) export into a
+  SeamProof trace, with recursive decoding of typed OTLP attribute values and a
+  `run.context` span lifted into the trace context.
+- `publish.py`: publish the gate result to **UiPath Test Manager**, via the
+  official `uipath` SDK when installed (`seamproof[uipath]`) or a stdlib REST
+  transport using `UIPATH_URL` + `UIPATH_ACCESS_TOKEN`; `--dry-run` previews the
+  payload offline.
+- CLI: `seamproof ingest`, `seamproof publish`, and `seamproof check --otel/--context`.
+- A sample Maestro OTLP export (`examples/otel/`) reproducing the Seam 1 case.
+
+### Changed
+- Version is now sourced from `seamproof/_version.py` (single source of truth).
+
 ## [0.1.0] - 2026-06-25
 
 Initial release — the seam-testing engine and release gate.
@@ -25,5 +43,6 @@ Initial release — the seam-testing engine and release gate.
   traces, and a scenario suite.
 - Test suite (unit + data-driven scenarios) and GitHub Actions CI.
 
-[Unreleased]: https://github.com/ankitlade12/seamproof/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ankitlade12/seamproof/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ankitlade12/seamproof/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ankitlade12/seamproof/releases/tag/v0.1.0

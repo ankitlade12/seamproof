@@ -141,6 +141,31 @@ seamproof check -c contracts -t <trace> -f json        # machine-readable
 seamproof check -c contracts -t <trace> -f junit -o report.xml   # Test Manager / CI
 ```
 
+## Run it against UiPath
+
+SeamProof reads UiPath Maestro's **OpenTelemetry** trace export and writes the
+verdict back to **UiPath Test Manager** — the two ends of a real platform
+integration:
+
+```bash
+# Gate a Maestro OTLP export directly (ingestion happens inline)
+seamproof check -c contracts --otel examples/otel/maestro_seam1_export.json
+
+# …or normalise the export to a SeamProof trace first
+seamproof ingest --otel examples/otel/maestro_seam1_export.json -o trace.json
+
+# Publish the gate result to Test Manager (--dry-run prints the exact payload)
+export UIPATH_URL=https://cloud.uipath.com UIPATH_ACCESS_TOKEN=… UIPATH_PROJECT_ID=…
+seamproof publish -c contracts --otel examples/otel/maestro_seam1_export.json --dry-run
+```
+
+Authentication uses UiPath's standard credentials. With the official SDK
+installed (`pip install "seamproof[uipath]"`), publishing goes through
+`uipath.platform.UiPath`, which handles auth and org/tenant scoping; without it,
+SeamProof falls back to a stdlib REST call using `UIPATH_URL` +
+`UIPATH_ACCESS_TOKEN`. Everything is testable offline via `--dry-run` and the
+bundled OTLP fixture, so it's ready to point at a tenant the moment you have one.
+
 ## UiPath components used
 
 SeamProof is a Track 3 (UiPath Test Cloud) solution. The system under test runs on
@@ -149,11 +174,13 @@ layer:
 
 | Component | Role in the solution |
 | --- | --- |
-| **UiPath Maestro** | Orchestrates the agent → router → human → robot process and emits the run trace SeamProof consumes. |
+| **UiPath Maestro** | Orchestrates the agent → router → human → robot process and emits the run trace (over OpenTelemetry) that SeamProof ingests. |
 | **UiPath Agent Builder** | The recon agent that reconciles the invoice (swappable for an external LangChain agent). |
 | **UiPath Action Center** | The human approval task at the routing → human seam. |
 | **UiPath Studio / RPA** | The robot that posts approved invoices to the ERP. |
-| **UiPath Test Cloud / Test Manager** | Consumes SeamProof's JUnit report; the gate surfaces as test results that block the release. |
+| **UiPath OpenTelemetry export** | Maestro's OTLP agent traces are SeamProof's input — ingested via `seamproof ingest` / `check --otel`. |
+| **UiPath Test Cloud / Test Manager** | Receives the gate result via `seamproof publish` (REST API) and as a JUnit report; the gate surfaces as test results that block the release. |
+| **UiPath Python SDK (`uipath`)** | Authenticates and posts the gate result to Test Manager, handling org/tenant scoping. |
 | **UiPath for Coding Agents** | The channel through which the coding agent authors SeamProof's contracts, scenarios, and reporter. |
 
 > The UiPath project exports live under [`sut/`](sut/). SeamProof itself is
@@ -182,7 +209,10 @@ guard the seams between them*.
   (Community tier is sufficient) with Maestro, Agent Builder, Action Center, and
   Test Cloud / Test Manager enabled.
 - The engine has a single runtime dependency, **PyYAML**; everything else is the
-  Python standard library.
+  Python standard library. OTEL ingestion and REST publishing need nothing extra.
+- **Optional:** the official **`uipath`** SDK (`pip install "seamproof[uipath]"`)
+  for SDK-based Test Manager publishing. Without it, publishing uses the built-in
+  REST transport.
 
 ## Setup
 
@@ -206,9 +236,10 @@ exported trace.
 
 ```
 seamproof/
-├── src/seamproof/        # the engine: trace, expr, contracts, evaluators, gate, report, cli
+├── src/seamproof/        # engine + adapters: trace, expr, contracts, evaluators, gate, report, ingest, publish, cli
 ├── contracts/            # seam contracts for the invoice-exception process (YAML)
 ├── examples/traces/      # sample run traces: golden + one injected failure per seam
+├── examples/otel/        # sample UiPath Maestro OpenTelemetry export (OTLP/JSON)
 ├── scenarios/            # scenario suite mapping each trace to its expected gate outcome
 ├── sut/                  # system under test — UiPath Maestro / Agent Builder / RPA exports
 ├── tests/                # unit tests + data-driven scenario regression suite
@@ -231,9 +262,9 @@ closed*: it asserts an injected seam violation returns a non-zero exit.
 ## Roadmap
 
 - Auto-discover seams from a Maestro process export.
-- Native Test Manager result publishing (beyond JUnit import).
 - A web report UI for the gate.
 - More assertion kinds (statistical drift, schema evolution).
+- Baseline-vs-candidate diffing for true A/B regression.
 - Broader systems under test (transaction-dispute intake, claims).
 
 ## Hackathon

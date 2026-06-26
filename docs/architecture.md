@@ -90,6 +90,24 @@ trace is untrusted data; a contract is trusted policy. Keeping the boundary at
 the data layer means a contract can be reviewed like a config file and a
 malicious trace can never run code. See [SECURITY.md](../SECURITY.md).
 
+## UiPath adapters
+
+Two adapters connect the platform-neutral engine to UiPath Automation Cloud:
+
+- **Ingest (input).** `ingest.py` normalises a Maestro **OpenTelemetry** (OTLP/JSON)
+  export into a trace: each span becomes an event, typed OTLP attribute values
+  (`stringValue`, `intValue`, `arrayValue`, `kvlistValue`, …) are decoded
+  recursively, and a `run.context` span is lifted into the trace context. Exposed
+  as `seamproof ingest` and `seamproof check --otel`.
+- **Publish (output).** `publish.py` maps the `GateResult` onto the Test Manager
+  result model and posts it. With the official `uipath` SDK installed it calls
+  `uipath.platform.UiPath` (auth + org/tenant scoping handled by UiPath); without
+  it, a stdlib REST transport uses `UIPATH_URL` + `UIPATH_ACCESS_TOKEN`. Exposed
+  as `seamproof publish` (with `--dry-run` for an offline payload preview).
+
+Both are testable offline against the bundled OTLP fixture and `--dry-run`, so the
+only thing that needs a live tenant is the final POST.
+
 ## Module map
 
 | Module | Responsibility |
@@ -100,4 +118,6 @@ malicious trace can never run code. See [SECURITY.md](../SECURITY.md).
 | `evaluators.py` | The assertion kinds and the per-contract evaluator. |
 | `gate.py` | Severity-aware GO / NO-GO aggregation. |
 | `report.py` | text / markdown / json / junit renderers. |
-| `cli.py` | `seamproof check` and exit codes. |
+| `ingest.py` | UiPath Maestro OTLP export → SeamProof trace. |
+| `publish.py` | Gate result → UiPath Test Manager (SDK or REST). |
+| `cli.py` | `check`, `ingest`, `publish` subcommands and exit codes. |

@@ -48,3 +48,14 @@ jobs:
           else
             echo "Gate correctly blocked the seam-1 violation"
           fi
+      # Ingest a Maestro OpenTelemetry export and gate it — must also fail closed.
+      - name: OTLP ingest gates closed
+        run: |
+          if seamproof check -c contracts --otel examples/otel/maestro_seam1_export.json; then
+            echo "::error::OTLP ingest did not block seam-1"; exit 1
+          else
+            echo "OTLP ingest path blocked seam-1"
+          fi
+      # Render the Test Manager payload offline (no tenant needed).
+      - name: Publish dry-run renders a Test Manager payload
+        run: seamproof publish -c contracts --otel examples/otel/maestro_seam1_export.json --base-url https://cloud.uipath.com --project demo --dry-run
