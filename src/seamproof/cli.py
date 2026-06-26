@@ -1,24 +1,47 @@
 """Command-line interface.
 
-``seamproof check`` is the gate: point it at a directory of seam contracts and a
-run trace, and it prints the PASS/FAIL report and exits non-zero when a blocking
-seam fails. That non-zero exit is what wires the gate into CI or a UiPath Test
-pipeline — a failing seam stops the release.
+Three subcommands:
+
+* ``seamproof check``   — evaluate seam contracts against a run trace and gate the
+  release (non-zero exit when a blocking seam fails). The trace can be a SeamProof
+  JSON file (``--trace``) or a UiPath Maestro OpenTelemetry export (``--otel``).
+* ``seamproof ingest``  — normalise a Maestro OTLP export into a SeamProof trace.
+* ``seamproof publish`` — post the gate result to UiPath Test Manager (or print
+  the exact payload with ``--dry-run``).
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from . import __version__
+from ._version import __version__
 from .contracts import load_contracts
 from .errors import SeamProofError
 from .gate import evaluate_gate
+from .ingest import trace_from_otel
+from .publish import PublishConfig, publish
 from .report import render
 from .trace import Trace
 
 _FORMATS = ("text", "markdown", "json", "junit")
+
+
+def _add_trace_source(parser: argparse.ArgumentParser) -> None:
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("-t", "--trace", help="path to a SeamProof run-trace JSON")
+    source.add_argument("--otel", help="path to a UiPath Maestro OpenTelemetry (OTLP/JSON) export")
+    parser.add_argument(
+        "--context", default=None,
+        help="path to a JSON context file to merge in when ingesting an --otel export",
+    )
+
+
+def _resolve_trace(args: argparse.Namespace) -> Trace:
+    if args.otel:
+        return trace_from_otel(args.otel, args.context)
+    return Trace.load(args.trace)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -29,48 +52,98 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"seamproof {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # -- check --------------------------------------------------------------
     check = sub.add_parser("check", help="evaluate seam contracts against a run trace")
-    check.add_argument(
-        "-c", "--contracts", required=True,
-        help="path to a contract file or a directory of contracts",
-    )
-    check.add_argument(
-        "-t", "--trace", required=True,
-        help="path to the run-trace JSON to evaluate",
-    )
-    check.add_argument(
-        "-f", "--format", default="text", choices=_FORMATS,
-        help="report format (default: text)",
-    )
-    check.add_argument(
-        "-o", "--out", default=None,
-        help="write the report to a file instead of stdout",
-    )
-    check.add_argument(
-        "--no-fail", action="store_true",
-        help="always exit 0, even on a NO-GO gate (report only)",
-    )
+    check.add_argument("-c", "--contracts", required=True, help="contract file or directory")
+    _add_trace_source(check)
+    check.add_argument("-f", "--format", default="text", choices=_FORMATS, help="report format")
+    check.add_argument("-o", "--out", default=None, help="write the report to a file")
+    check.add_argument("--no-fail", action="store_true", help="always exit 0, even on NO-GO")
     check.set_defaults(func=_cmd_check)
+
+    # -- ingest -------------------------------------------------------------
+    ingest = sub.add_parser("ingest", help="normalise a Maestro OTLP export into a SeamProof trace")
+    ingest.add_argument("--otel", required=True, help="path to the OTLP/JSON export")
+    ingest.add_argument("--context", default=None, help="path to a JSON context file to merge in")
+    ingest.add_argument("-o", "--out", default=None, help="write the trace JSON to a file (default: stdout)")
+    ingest.set_defaults(func=_cmd_ingest)
+
+    # -- publish ------------------------------------------------------------
+    pub = sub.add_parser("publish", help="post the gate result to UiPath Test Manager")
+    pub.add_argument("-c", "--contracts", required=True, help="contract file or directory")
+    _add_trace_source(pub)
+    pub.add_argument("--project", default=None, help="Test Manager project id (or UIPATH_PROJECT_ID)")
+    pub.add_argument("--base-url", default=None, help="UiPath base URL (or UIPATH_URL)")
+    pub.add_argument("--token", default=None, help="access token (or UIPATH_ACCESS_TOKEN)")
+    pub.add_argument("--test-set", default=None, help="name for the Test Manager execution")
+    pub.add_argument("--endpoint", default=None, help="override the Test Manager REST path")
+    pub.add_argument("--dry-run", action="store_true", help="print the payload without sending it")
+    pub.set_defaults(func=_cmd_publish)
     return parser
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
     contracts = load_contracts(args.contracts)
-    trace = Trace.load(args.trace)
+    trace = _resolve_trace(args)
     result = evaluate_gate(trace, contracts)
 
     report = render(result, args.format)
     if args.out:
-        Path(args.out).write_text(report + ("\n" if not report.endswith("\n") else ""))
-        # Even when writing a machine format to a file, give the console a verdict.
+        Path(args.out).write_text(report + ("" if report.endswith("\n") else "\n"))
         print(render(result, "text"))
         print(f"\nReport written to {args.out}")
     else:
         print(report)
 
-    if args.no_fail:
-        return 0
-    return result.exit_code
+    return 0 if args.no_fail else result.exit_code
+
+
+def _cmd_ingest(args: argparse.Namespace) -> int:
+    trace = trace_from_otel(args.otel, args.context)
+    payload = {
+        "trace_id": trace.trace_id,
+        "process": trace.process,
+        "context": trace.context,
+        "events": [
+            {
+                "id": e.id, "seq": e.seq, "actor": e.actor, "actor_type": e.actor_type,
+                "type": e.type, "timestamp": e.timestamp, "attributes": e.attributes,
+            }
+            for e in trace.events
+        ],
+    }
+    text = json.dumps(payload, indent=2)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+        print(f"Ingested {len(trace.events)} events -> {args.out}")
+    else:
+        print(text)
+    return 0
+
+
+def _cmd_publish(args: argparse.Namespace) -> int:
+    contracts = load_contracts(args.contracts)
+    trace = _resolve_trace(args)
+    result = evaluate_gate(trace, contracts)
+
+    config = PublishConfig.from_env(
+        base_url=args.base_url,
+        token=args.token,
+        project_id=args.project,
+        test_set=args.test_set,
+        endpoint=args.endpoint,
+    )
+    outcome = publish(result, config, dry_run=args.dry_run)
+
+    print(render(result, "text"))
+    print()
+    if outcome.get("dry_run"):
+        print(f"[dry run] would POST to: {outcome['endpoint']}")
+        print(json.dumps(outcome["payload"], indent=2))
+    else:
+        print(f"Published via {outcome.get('transport')} transport "
+              f"(HTTP {outcome.get('status_code')}) — gate: {result.decision.value}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,0 +1,144 @@
+{
+  "_comment": "Sample UiPath Maestro OpenTelemetry (OTLP/JSON) trace export for the invoice-exception process, reproducing the Seam 1 silent-corruption case (agent emits amount 5400; line items sum to 4200). Ingest with: seamproof check --otel examples/otel/maestro_seam1_export.json",
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          { "key": "service.name", "value": { "stringValue": "invoice-exception-handling" } },
+          { "key": "process", "value": { "stringValue": "invoice-exception-handling" } },
+          { "key": "uipath.product", "value": { "stringValue": "maestro" } }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": { "name": "uipath.maestro", "version": "2026.4" },
+          "spans": [
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "00c0ffeec0011d00",
+              "name": "run.context",
+              "kind": 1,
+              "startTimeUnixNano": "1782403325000000000",
+              "endTimeUnixNano": "1782403325000000000",
+              "attributes": [
+                { "key": "po", "value": { "kvlistValue": { "values": [
+                  { "key": "number", "value": { "stringValue": "PO-88231" } },
+                  { "key": "currency", "value": { "stringValue": "USD" } },
+                  { "key": "vendor_id", "value": { "stringValue": "V-1042" } }
+                ] } } },
+                { "key": "approved_vendor_master", "value": { "arrayValue": { "values": [
+                  { "stringValue": "V-1042" }, { "stringValue": "V-1043" },
+                  { "stringValue": "V-2001" }, { "stringValue": "V-3300" }
+                ] } } },
+                { "key": "auto_post_ceiling", "value": { "intValue": "10000" } },
+                { "key": "human_review_floor", "value": { "intValue": "9000" } },
+                { "key": "min_confidence", "value": { "doubleValue": 0.90 } },
+                { "key": "sla", "value": { "kvlistValue": { "values": [
+                  { "key": "max_cost_usd", "value": { "doubleValue": 0.05 } },
+                  { "key": "max_cycle_seconds", "value": { "intValue": "120" } }
+                ] } } }
+              ]
+            },
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "1a2b3c4d5e6f7081",
+              "name": "agent.output",
+              "kind": 1,
+              "startTimeUnixNano": "1782403330000000000",
+              "endTimeUnixNano": "1782403331500000000",
+              "attributes": [
+                { "key": "actor", "value": { "stringValue": "recon-agent" } },
+                { "key": "actor_type", "value": { "stringValue": "agent" } },
+                { "key": "confidence", "value": { "doubleValue": 0.96 } },
+                { "key": "vendor_id", "value": { "stringValue": "V-1042" } },
+                { "key": "amount", "value": { "doubleValue": 5400.0 } },
+                { "key": "currency", "value": { "stringValue": "USD" } },
+                { "key": "exception_flagged", "value": { "boolValue": false } },
+                { "key": "line_items", "value": { "arrayValue": { "values": [
+                  { "kvlistValue": { "values": [
+                    { "key": "sku", "value": { "stringValue": "A1" } },
+                    { "key": "amount", "value": { "doubleValue": 1200.0 } }
+                  ] } },
+                  { "kvlistValue": { "values": [
+                    { "key": "sku", "value": { "stringValue": "B2" } },
+                    { "key": "amount", "value": { "doubleValue": 3000.0 } }
+                  ] } }
+                ] } } }
+              ]
+            },
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "2b3c4d5e6f708192",
+              "name": "routing.decision",
+              "kind": 1,
+              "startTimeUnixNano": "1782403332000000000",
+              "endTimeUnixNano": "1782403332200000000",
+              "attributes": [
+                { "key": "actor", "value": { "stringValue": "router" } },
+                { "key": "actor_type", "value": { "stringValue": "router" } },
+                { "key": "route", "value": { "stringValue": "auto-post" } },
+                { "key": "reason", "value": { "stringValue": "amount<floor, confidence>=min, no exception" } }
+              ]
+            },
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "3c4d5e6f70819203",
+              "name": "robot.input",
+              "kind": 1,
+              "startTimeUnixNano": "1782403333000000000",
+              "endTimeUnixNano": "1782403333100000000",
+              "attributes": [
+                { "key": "actor", "value": { "stringValue": "posting-robot" } },
+                { "key": "actor_type", "value": { "stringValue": "robot" } },
+                { "key": "vendor_id", "value": { "stringValue": "V-1042" } },
+                { "key": "amount", "value": { "doubleValue": 5400.0 } },
+                { "key": "currency", "value": { "stringValue": "USD" } },
+                { "key": "line_items", "value": { "arrayValue": { "values": [
+                  { "kvlistValue": { "values": [
+                    { "key": "sku", "value": { "stringValue": "A1" } },
+                    { "key": "amount", "value": { "doubleValue": 1200.0 } }
+                  ] } },
+                  { "kvlistValue": { "values": [
+                    { "key": "sku", "value": { "stringValue": "B2" } },
+                    { "key": "amount", "value": { "doubleValue": 3000.0 } }
+                  ] } }
+                ] } } }
+              ]
+            },
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "4d5e6f7081920314",
+              "name": "robot.action",
+              "kind": 1,
+              "startTimeUnixNano": "1782403357000000000",
+              "endTimeUnixNano": "1782403357800000000",
+              "attributes": [
+                { "key": "actor", "value": { "stringValue": "posting-robot" } },
+                { "key": "actor_type", "value": { "stringValue": "robot" } },
+                { "key": "system", "value": { "stringValue": "mock-erp" } },
+                { "key": "operation", "value": { "stringValue": "post_invoice" } },
+                { "key": "status", "value": { "stringValue": "success" } },
+                { "key": "posted_amount", "value": { "doubleValue": 5400.0 } }
+              ]
+            },
+            {
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "5e6f708192031425",
+              "name": "run.metrics",
+              "kind": 1,
+              "startTimeUnixNano": "1782403359000000000",
+              "endTimeUnixNano": "1782403359000000000",
+              "attributes": [
+                { "key": "actor", "value": { "stringValue": "system" } },
+                { "key": "actor_type", "value": { "stringValue": "system" } },
+                { "key": "cost_usd", "value": { "doubleValue": 0.013 } },
+                { "key": "cycle_seconds", "value": { "intValue": "39" } },
+                { "key": "model", "value": { "stringValue": "claude-sonnet-4-6" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

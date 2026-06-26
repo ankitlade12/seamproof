@@ -8,6 +8,7 @@ from seamproof.cli import main
 ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS = str(ROOT / "contracts")
 TRACES = ROOT / "examples" / "traces"
+OTEL = str(ROOT / "examples" / "otel" / "maestro_seam1_export.json")
 
 
 def test_go_path_exits_zero(capsys):
@@ -48,3 +49,29 @@ def test_missing_trace_is_clean_error(capsys):
     code = main(["check", "-c", CONTRACTS, "-t", str(TRACES / "does_not_exist.json")])
     assert code == 2
     assert "error" in capsys.readouterr().err.lower()
+
+
+def test_check_otel_blocks_seam1(capsys):
+    code = main(["check", "-c", CONTRACTS, "--otel", OTEL])
+    assert code == 1
+    assert "GATE: NO-GO" in capsys.readouterr().out
+
+
+def test_ingest_then_check_roundtrip(tmp_path, capsys):
+    out = tmp_path / "trace.json"
+    assert main(["ingest", "--otel", OTEL, "-o", str(out)]) == 0
+    assert out.exists()
+    capsys.readouterr()
+    code = main(["check", "-c", CONTRACTS, "-t", str(out)])
+    assert code == 1  # the normalised trace still trips seam-1
+
+
+def test_publish_dry_run_prints_payload(capsys):
+    code = main([
+        "publish", "-c", CONTRACTS, "--otel", OTEL,
+        "--project", "TM-1", "--base-url", "https://cloud.uipath.com", "--dry-run",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "dry run" in out.lower()
+    assert '"status": "Failed"' in out

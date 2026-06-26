@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "seamproof"
-version = "0.1.0"
+dynamic = ["version"]
 description = "The seam tester for agentic processes — assert the agent → robot → human handoffs and gate the release."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Publish gate results through the official UiPath SDK (auth + org/tenant scoping).
+# Without this extra, SeamProof publishes via its stdlib REST transport instead.
+uipath = [
+  "uipath",
+]
 dev = [
   "pytest>=7.4",
   "ruff>=0.5",
@@ -36,6 +41,9 @@ seamproof = "seamproof.cli:main"
 Homepage = "https://github.com/ankitlade12/seamproof"
 Repository = "https://github.com/ankitlade12/seamproof"
 Issues = "https://github.com/ankitlade12/seamproof/issues"
+
+[tool.hatch.version]
+path = "src/seamproof/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/seamproof"]
