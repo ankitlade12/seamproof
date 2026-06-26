@@ -29,14 +29,17 @@ tissue.
 
 ## What it does
 
-SeamProof treats every handoff as a **contract** and tests it against the real run
-trace. It asserts trace-level properties at each agent → robot → human boundary and
-emits a **go/no-go release gate** with the evidence — the missing QA layer for
-*composite* agentic processes. A change that breaks a seam blocks the release,
-automatically, in Test Manager.
+The hackathon's premise is that "the real value now lies in how we **operate and
+govern agents at scale**." SeamProof is that governance layer for the release gate:
+it treats every handoff as a **contract** and tests it against the real run trace,
+asserting trace-level properties at each agent → robot → human boundary and emitting
+a **go/no-go gate** with the evidence. A change that breaks a seam blocks the
+release — automatically, in CI and Test Manager.
 
-It is structurally UiPath-only: no other platform has real robots and Action Center
-human tasks as first-class actors in one orchestrated process.
+The seam-contract model is **general** (it applies to any agent → robot → human
+process); the invoice-exception process is one reference implementation. And it is
+structurally UiPath-only: no other platform has real robots and Action Center human
+tasks as first-class actors in one orchestrated process.
 
 ## How we built it
 

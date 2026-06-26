@@ -8,8 +8,9 @@ with "access to all"). ~10 slides, ~5 minutes.
 Ankit Lade. github.com/ankitlade12/seamproof
 
 ## 2 · The problem
-An AI agent, an RPA robot, and a human approver run in one flow — but we test each
-**in isolation**. Production incidents come from the **seams between them**.
+**Agents reach production only when we can govern them at scale.** An AI agent, an
+RPA robot, and a human approver run in one flow — but we test each **in isolation**.
+Production incidents come from the **seams between them**.
 > Three failure modes: silent corruption (agent→robot), skipped checkpoint
 > (routing→human), cost/SLA drift.
 

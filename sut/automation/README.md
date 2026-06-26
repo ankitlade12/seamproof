@@ -54,6 +54,10 @@ Add `"use_action_center": true` to create a real Action Center task at the human
 step (tenant + `uipath auth` required), e.g.
 `uipath run process '{"case": "high_value", "use_action_center": true}'`.
 
+Set `"erp_url": "https://httpbin.org/post"` (or your ERP/API Workflow endpoint) and
+the posting robot performs a **real HTTP POST** of the invoice instead of a
+simulated post.
+
 ## Evaluate the recon agent
 
 The recon agent is quality-tested with a native **`uipath eval`** set

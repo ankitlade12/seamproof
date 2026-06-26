@@ -27,6 +27,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   artifacts (`sut/agent/`, `sut/data/`) for the low-code build of the same process.
 
 ### Changed
+- Reframed the docs around **governing agents at scale** (the seam-contract model is
+  general; invoice is one reference implementation).
+- The posting robot does a **real HTTP POST** to an ERP endpoint when `erp_url` is
+  set; CI now surfaces the gate verdict in the run summary and uploads a JUnit
+  artifact (the release gate, visible in CI).
 - Rewrote the Test Manager publisher to the real **v2** API (create test cases →
   `ThirdParty` execution → per-seam logs → `override-result` Passed/Failed →
   finish), verified against a live tenant's Swagger. The SDK transport now uses the

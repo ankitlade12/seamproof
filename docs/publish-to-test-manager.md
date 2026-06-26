@@ -88,15 +88,33 @@ results** needs a test-execution scope the interactive login does **not** includ
 a direct `seamproof publish` reaches `POST .../testexecutions` and returns **403**
 with a normal user token (verified on the hackathon tenant).
 
-To post results, authenticate with an **External Application** (Automation Cloud →
-Admin → External Applications) that has the Test Manager execution scopes, and run
-unattended:
+To post results, use an **External Application** (client credentials) with the full
+Test Manager scopes:
 
-```bash
-uipath auth --base-url <tenant-url> --client-id <id> --client-secret <secret> --scope <scopes>
-```
+1. **Automation Cloud → Admin → External Applications → Add Application** →
+   *Confidential application*.
+2. **Add scopes → Test Manager** → select the Test Manager API scopes (include the
+   **test execution / results** scopes, not just `TM.TestCases`). Save.
+3. Copy the **App ID** (client id) and **App Secret**.
+4. Authenticate unattended (no browser):
 
-`seamproof publish` then uses the SDK session and the full v2 flow completes.
+   ```bash
+   uipath auth --base-url https://staging.uipath.com/hackathon26_1024/DefaultTenant \
+     --client-id <APP_ID> --client-secret <APP_SECRET> --scope "TM ..."
+   ```
+
+5. Run the publish — it now reaches `POST .../testexecutions` with permission and the
+   full v2 flow (execution → logs → results → finish) completes:
+
+   ```bash
+   seamproof publish -c contracts --otel run.otlp.json \
+     --base-url https://staging.uipath.com/hackathon26_1024/DefaultTenant \
+     --project <PROJECT_ID> --container <SECTION_ID>
+   ```
+
+The publisher is already verified up to this permission boundary — it creates the
+project and the per-seam test cases with a normal token; only the execution POST
+needs the External-App scope.
 
 ## Native alternative
 

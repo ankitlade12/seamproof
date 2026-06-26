@@ -6,12 +6,12 @@ Times are guides. Record a clean take of each command in advance as backup.
 
 ## 0:00 – 0:35 · The problem
 
-> "In an agentic process an AI agent, an RPA robot, and a human approver run in
-> one flow. We test each actor in isolation — the agent's eval here, the robot's
-> test there. But production incidents come from the **seams between them**: the
-> agent emits a valid-but-wrong number and the robot faithfully posts it; a
-> boundary case routes around the human approval that policy required. SeamProof
-> tests the handoffs."
+> "The value of agents now is in **governing them at scale**. In an agentic process
+> an AI agent, an RPA robot, and a human approver run in one flow — and we test each
+> actor in isolation. But production incidents come from the **seams between them**:
+> the agent emits a valid-but-wrong number and the robot faithfully posts it; a
+> boundary case routes around the human approval that policy required. SeamProof is
+> the release gate that tests the handoffs — for any agent → robot → human process."
 
 Show the architecture diagram ([architecture.md](architecture.md)).
 
@@ -37,11 +37,13 @@ seamproof check -c ../../contracts --otel golden.otlp.json     # GATE: GO
 ## 1:20 – 2:35 · Break Seam 1 live (silent corruption)
 
 ```bash
-uipath run process '{"case": "seam1_corruption"}'              # agent emits 5,400; line items sum 4,200
+# use_llm:true runs recon on the REAL UiPath LLM Gateway (the AI Trust Layer)
+uipath run process '{"case": "seam1_corruption", "use_llm": true}'
 seamproof check -c ../../contracts --otel seam1_corruption.otlp.json
 ```
 
-> "Valid JSON, but the business outcome is wrong — the robot would post $5,400.
+> "A real agent on the UiPath LLM Gateway extracts $5,400 — valid JSON, but the
+> business outcome is wrong; the robot would post $5,400.
 > SeamProof asserts `amount == sum(line_items)` at the agent→robot seam:
 > **expected 5400 == 4200, differs by 1200. GATE: NO-GO, blocked by seam-1.**"
 

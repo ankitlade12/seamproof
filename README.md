@@ -41,14 +41,17 @@ tissue.
 
 ## What SeamProof does
 
-SeamProof treats every handoff as a **contract** and tests it against the real run
-trace. It asserts trace-level properties at each agent → robot → human boundary
-and emits a **go/no-go release gate** with the evidence. It is the missing QA
-layer for *composite* agentic processes — not the agent, not the app, but the
-seams between them.
+The blocker to putting agents in production isn't the model — it's **governing what
+happens when an agent, a robot, and a human hand off to each other**. SeamProof
+treats every handoff as a **contract** and tests it against the real run trace. It
+asserts trace-level properties at each agent → robot → human boundary and emits a
+**go/no-go release gate** with the evidence: the missing QA layer for *composite*
+agentic processes — not the agent, not the app, but the seams between them.
 
-Because it works from the exported run trace, the gate runs **offline** and in CI
-— no live cloud call needed to prove a seam broke.
+The seam-contract model is **general** — it applies to any agent → robot → human
+process; the bundled invoice-exception process is one reference implementation.
+Because it works from the exported run trace, the gate runs **offline** and in CI —
+no live cloud call needed to prove a seam broke.
 
 ```text
 SeamProof — invoice-exception-handling
