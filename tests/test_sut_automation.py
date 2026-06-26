@@ -40,6 +40,7 @@ CONTRACTS = load_contracts(ROOT / "contracts")
     "case, decision, blocking",
     [
         ("golden", "GO", []),
+        ("high_value", "GO", []),
         ("seam1_corruption", "NO-GO", ["seam-1"]),
         ("seam2_near_ceiling", "NO-GO", ["seam-2"]),
     ],
@@ -66,3 +67,19 @@ def test_seam2_routing_bug_skips_human():
     assert output.route == "auto-post"
     names = [s["name"] for s in output.otlp["resourceSpans"][0]["scopeSpans"][0]["spans"]]
     assert "human.decision" not in names
+
+
+def test_high_value_routes_through_human():
+    """The high-value case routes to a human and records an approved decision."""
+    output = automation.process(automation.ProcessInput(case="high_value"))
+    assert output.route == "human-review"
+    names = [s["name"] for s in output.otlp["resourceSpans"][0]["scopeSpans"][0]["spans"]]
+    assert "human.decision" in names
+
+
+def test_extract_entrypoint_returns_recon():
+    """The recon-only entrypoint (used by `uipath eval`) returns the structured fields."""
+    recon = automation.extract(automation.ExtractInput(case="golden"))
+    assert recon["amount"] == 4200.0
+    assert sum(item["amount"] for item in recon["line_items"]) == 4200.0
+    assert recon["exception_flagged"] is False

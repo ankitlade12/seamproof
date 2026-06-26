@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "id": "JsonSimilarityEvaluator",
+  "name": "JsonSimilarityEvaluator",
+  "description": "Compares the recon agent's structured output against the expected extraction.",
+  "evaluatorTypeId": "uipath-json-similarity",
+  "evaluatorConfig": {
+    "name": "JsonSimilarityEvaluator",
+    "targetOutputKey": "*"
+  }
+}

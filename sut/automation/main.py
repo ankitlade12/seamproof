@@ -89,6 +89,19 @@ CASES: dict[str, dict[str, Any]] = {
         "po": {"number": "PO-77450", "currency": "USD", "vendor_id": "V-2001", "amount": 9950.00},
         "receipt": {"received": True, "items": ["E5", "F6"]},
     },
+    "high_value": {
+        # Correctly routed to a human (amount >= review floor) and approved before
+        # posting — the happy path that exercises the Action Center step.
+        "trace_id": "sut-highval-001",
+        "route_mode": "policy",
+        "invoice_text": (
+            "INVOICE\nVendor: Acme Supplies (V-1043)\nCurrency: USD\nLine items:\n"
+            "  C3  Server cluster ......  7,000.00\n  D4  Support plan ........  5,000.00\n"
+            "TOTAL DUE: USD 12,000.00"
+        ),
+        "po": {"number": "PO-90115", "currency": "USD", "vendor_id": "V-1043", "amount": 12000.00},
+        "receipt": {"received": True, "items": ["C3", "D4"]},
+    },
 }
 
 _RECON_SYSTEM = (
@@ -104,9 +117,10 @@ _RECON_SYSTEM = (
 @dataclass
 class ProcessInput:
     case: str = "golden"
-    use_llm: bool = False
-    route_mode: str | None = None      # override the case's routing mode
-    out: str | None = None             # write the OTLP doc here when set
+    use_llm: bool = False               # recon via the UiPath LLM Gateway
+    use_action_center: bool = False     # create a real Action Center task at the human step
+    route_mode: str | None = None       # override the case's routing mode
+    out: str | None = None              # write the OTLP doc here when set
 
 
 @dataclass
@@ -194,10 +208,36 @@ def route(recon: dict[str, Any], route_mode: str) -> dict[str, Any]:
     return {"route": "human-review" if needs_human else "auto-post", "reason": reason, "mode": route_mode}
 
 
+def _create_action_center_task(recon: dict[str, Any]) -> str | None:
+    """Create a real UiPath Action Center task and return its key (tenant mode).
+
+    In a Maestro-orchestrated run the process *suspends* on this task (the
+    ``WaitTask`` interrupt) until a human acts, then resumes. Here we create the
+    task so it is visible and actionable in Action Center, and record its key.
+    """
+    from uipath.platform import UiPath
+
+    client = UiPath()
+    task = client.tasks.create(
+        title=f"Approve invoice {recon['vendor_id']} — {recon['currency']} {recon['amount']:,.2f}",
+        data={k: recon[k] for k in ("vendor_id", "amount", "currency")},
+        priority="Medium",
+    )
+    return str(getattr(task, "key", None) or getattr(task, "id", "") or "") or None
+
+
 @traced(name="approve", span_type="human")
-def approve(recon: dict[str, Any]) -> dict[str, Any]:
+def approve(recon: dict[str, Any], use_action_center: bool = False) -> dict[str, Any]:
     """The human approver via Action Center (human.decision)."""
-    return {"status": "approved", "approver": "j.okafor", "note": "PO and receipt match"}
+    decision = {"status": "approved", "approver": "j.okafor", "note": "PO and receipt match"}
+    if use_action_center:
+        try:
+            key = _create_action_center_task(recon)
+            if key:
+                decision["action_center_task"] = key
+        except Exception:
+            pass  # offline / no credentials -> simulated approval
+    return decision
 
 
 @traced(name="post_invoice", span_type="robot")
@@ -287,7 +327,8 @@ def process(input: ProcessInput) -> ProcessOutput:
         ("routing.decision", {"actor": "router", "actor_type": "router", **routing}),
     ]
     if routing["route"] == "human-review":
-        spans.append(("human.decision", {"actor": "approver", "actor_type": "human", **approve(recon)}))
+        decision = approve(recon, input.use_action_center)
+        spans.append(("human.decision", {"actor": "approver", "actor_type": "human", **decision}))
 
     robot_input = {
         "actor": "posting-robot", "actor_type": "robot",
@@ -311,6 +352,21 @@ def process(input: ProcessInput) -> ProcessOutput:
         posted_amount=action["posted_amount"],
         otlp=otlp,
     )
+
+
+@dataclass
+class ExtractInput:
+    case: str = "golden"
+    use_llm: bool = False
+
+
+@traced(name="extract")
+def extract(input: ExtractInput) -> dict[str, Any]:
+    """Recon-only entrypoint, used by `uipath eval` to quality-test the agent."""
+    case = CASES.get(input.case)
+    if case is None:
+        raise ValueError(f"unknown case {input.case!r}; choose from {list(CASES)}")
+    return reconcile(case, input.use_llm)
 
 
 if __name__ == "__main__":

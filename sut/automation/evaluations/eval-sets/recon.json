@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "id": "recon-eval-set",
+  "name": "Recon agent extraction quality",
+  "evaluatorRefs": ["JsonSimilarityEvaluator"],
+  "evaluations": [
+    {
+      "id": "recon-golden",
+      "name": "Clean invoice extracts a consistent total",
+      "inputs": { "case": "golden", "use_llm": false },
+      "evaluationCriterias": {
+        "JsonSimilarityEvaluator": {
+          "expectedOutput": {
+            "vendor_id": "V-1042",
+            "amount": 4200.0,
+            "currency": "USD",
+            "line_items": [
+              { "sku": "A1", "amount": 1200.0 },
+              { "sku": "B2", "amount": 3000.0 }
+            ],
+            "confidence": 0.95,
+            "exception_flagged": false
+          }
+        }
+      }
+    },
+    {
+      "id": "recon-seam1",
+      "name": "Transposed printed total is extracted faithfully (not silently corrected)",
+      "inputs": { "case": "seam1_corruption", "use_llm": false },
+      "evaluationCriterias": {
+        "JsonSimilarityEvaluator": {
+          "expectedOutput": {
+            "vendor_id": "V-1042",
+            "amount": 5400.0,
+            "currency": "USD",
+            "line_items": [
+              { "sku": "A1", "amount": 1200.0 },
+              { "sku": "B2", "amount": 3000.0 }
+            ],
+            "confidence": 0.95,
+            "exception_flagged": false
+          }
+        }
+      }
+    },
+    {
+      "id": "recon-high-value",
+      "name": "High-value invoice extracts vendor, currency, and line items",
+      "inputs": { "case": "high_value", "use_llm": false },
+      "evaluationCriterias": {
+        "JsonSimilarityEvaluator": {
+          "expectedOutput": {
+            "vendor_id": "V-1043",
+            "amount": 12000.0,
+            "currency": "USD",
+            "line_items": [
+              { "sku": "C3", "amount": 7000.0 },
+              { "sku": "D4", "amount": 5000.0 }
+            ],
+            "confidence": 0.95,
+            "exception_flagged": false
+          }
+        }
+      }
+    }
+  ]
+}

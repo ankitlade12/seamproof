@@ -4,7 +4,7 @@
     "entryPoints": [
         {
             "filePath": "process",
-            "uniqueId": "cddb26e9-7033-44db-950a-b93a175685ea",
+            "uniqueId": "d03e4dfe-caab-49b0-add2-de70dd84c43e",
             "type": "function",
             "input": {
                 "type": "object",
@@ -13,6 +13,9 @@
                         "type": "string"
                     },
                     "use_llm": {
+                        "type": "boolean"
+                    },
+                    "use_action_center": {
                         "type": "boolean"
                     },
                     "route_mode": {
@@ -53,7 +56,7 @@
             "graph": {
                 "nodes": [
                     {
-                        "id": "main.py:307",
+                        "id": "main.py:348",
                         "name": "process",
                         "type": "function",
                         "metadata": {
@@ -61,7 +64,7 @@
                         }
                     },
                     {
-                        "id": "main.py:178",
+                        "id": "main.py:192",
                         "name": "reconcile",
                         "type": "function",
                         "metadata": {
@@ -69,7 +72,7 @@
                         }
                     },
                     {
-                        "id": "main.py:141",
+                        "id": "main.py:155",
                         "name": "_deterministic_recon",
                         "type": "function",
                         "metadata": {
@@ -77,7 +80,7 @@
                         }
                     },
                     {
-                        "id": "main.py:126",
+                        "id": "main.py:140",
                         "name": "_parse_money",
                         "type": "function",
                         "metadata": {
@@ -85,7 +88,7 @@
                         }
                     },
                     {
-                        "id": "main.py:167",
+                        "id": "main.py:181",
                         "name": "_llm_recon",
                         "type": "function",
                         "metadata": {
@@ -93,7 +96,7 @@
                         }
                     },
                     {
-                        "id": "main.py:194",
+                        "id": "main.py:208",
                         "name": "route",
                         "type": "function",
                         "metadata": {
@@ -101,7 +104,7 @@
                         }
                     },
                     {
-                        "id": "main.py:215",
+                        "id": "main.py:255",
                         "name": "post_invoice",
                         "type": "function",
                         "metadata": {
@@ -109,7 +112,7 @@
                         }
                     },
                     {
-                        "id": "main.py:256",
+                        "id": "main.py:296",
                         "name": "_otlp",
                         "type": "function",
                         "metadata": {
@@ -117,7 +120,7 @@
                         }
                     },
                     {
-                        "id": "main.py:239",
+                        "id": "main.py:279",
                         "name": "_attrs",
                         "type": "function",
                         "metadata": {
@@ -125,7 +128,7 @@
                         }
                     },
                     {
-                        "id": "main.py:235",
+                        "id": "main.py:275",
                         "name": "_anyvalue",
                         "type": "function",
                         "metadata": {
@@ -133,8 +136,16 @@
                         }
                     },
                     {
-                        "id": "main.py:200",
+                        "id": "main.py:240",
                         "name": "approve",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:226",
+                        "name": "_create_action_center_task",
                         "type": "function",
                         "metadata": {
                             "file": "main.py"
@@ -143,52 +154,142 @@
                 ],
                 "edges": [
                     {
-                        "source": "main.py:141",
-                        "target": "main.py:126"
+                        "source": "main.py:155",
+                        "target": "main.py:140"
                     },
                     {
-                        "source": "main.py:141",
-                        "target": "main.py:126"
+                        "source": "main.py:155",
+                        "target": "main.py:140"
                     },
                     {
-                        "source": "main.py:178",
-                        "target": "main.py:141"
+                        "source": "main.py:192",
+                        "target": "main.py:155"
                     },
                     {
-                        "source": "main.py:178",
-                        "target": "main.py:167"
+                        "source": "main.py:192",
+                        "target": "main.py:181"
                     },
                     {
-                        "source": "main.py:307",
-                        "target": "main.py:178"
+                        "source": "main.py:348",
+                        "target": "main.py:192"
                     },
                     {
-                        "source": "main.py:307",
-                        "target": "main.py:194"
+                        "source": "main.py:348",
+                        "target": "main.py:208"
                     },
                     {
-                        "source": "main.py:307",
-                        "target": "main.py:215"
+                        "source": "main.py:348",
+                        "target": "main.py:255"
                     },
                     {
-                        "source": "main.py:239",
-                        "target": "main.py:235"
+                        "source": "main.py:279",
+                        "target": "main.py:275"
                     },
                     {
-                        "source": "main.py:256",
-                        "target": "main.py:239"
+                        "source": "main.py:296",
+                        "target": "main.py:279"
                     },
                     {
-                        "source": "main.py:256",
-                        "target": "main.py:239"
+                        "source": "main.py:296",
+                        "target": "main.py:279"
                     },
                     {
-                        "source": "main.py:307",
-                        "target": "main.py:256"
+                        "source": "main.py:348",
+                        "target": "main.py:296"
                     },
                     {
-                        "source": "main.py:307",
-                        "target": "main.py:200"
+                        "source": "main.py:240",
+                        "target": "main.py:226"
+                    },
+                    {
+                        "source": "main.py:348",
+                        "target": "main.py:240"
+                    }
+                ]
+            }
+        },
+        {
+            "filePath": "extract",
+            "uniqueId": "1c4c761a-0f7e-4176-874d-16f037b33eaf",
+            "type": "function",
+            "input": {
+                "type": "object",
+                "properties": {
+                    "case": {
+                        "type": "string"
+                    },
+                    "use_llm": {
+                        "type": "boolean"
+                    }
+                },
+                "required": []
+            },
+            "output": {
+                "type": "object"
+            },
+            "graph": {
+                "nodes": [
+                    {
+                        "id": "main.py:369",
+                        "name": "extract",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:192",
+                        "name": "reconcile",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:155",
+                        "name": "_deterministic_recon",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:140",
+                        "name": "_parse_money",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:181",
+                        "name": "_llm_recon",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    }
+                ],
+                "edges": [
+                    {
+                        "source": "main.py:155",
+                        "target": "main.py:140"
+                    },
+                    {
+                        "source": "main.py:155",
+                        "target": "main.py:140"
+                    },
+                    {
+                        "source": "main.py:192",
+                        "target": "main.py:155"
+                    },
+                    {
+                        "source": "main.py:192",
+                        "target": "main.py:181"
+                    },
+                    {
+                        "source": "main.py:369",
+                        "target": "main.py:192"
                     }
                 ]
             }
