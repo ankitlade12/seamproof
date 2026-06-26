@@ -1,0 +1,197 @@
+{
+    "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+    "$id": "entry-points.json",
+    "entryPoints": [
+        {
+            "filePath": "process",
+            "uniqueId": "cddb26e9-7033-44db-950a-b93a175685ea",
+            "type": "function",
+            "input": {
+                "type": "object",
+                "properties": {
+                    "case": {
+                        "type": "string"
+                    },
+                    "use_llm": {
+                        "type": "boolean"
+                    },
+                    "route_mode": {
+                        "type": "object"
+                    },
+                    "out": {
+                        "type": "object"
+                    }
+                },
+                "required": []
+            },
+            "output": {
+                "type": "object",
+                "properties": {
+                    "trace_id": {
+                        "type": "string"
+                    },
+                    "route": {
+                        "type": "string"
+                    },
+                    "posted": {
+                        "type": "boolean"
+                    },
+                    "posted_amount": {
+                        "type": "number"
+                    },
+                    "otlp": {
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "trace_id",
+                    "route",
+                    "posted",
+                    "posted_amount"
+                ]
+            },
+            "graph": {
+                "nodes": [
+                    {
+                        "id": "main.py:307",
+                        "name": "process",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:178",
+                        "name": "reconcile",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:141",
+                        "name": "_deterministic_recon",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:126",
+                        "name": "_parse_money",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:167",
+                        "name": "_llm_recon",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:194",
+                        "name": "route",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:215",
+                        "name": "post_invoice",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:256",
+                        "name": "_otlp",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:239",
+                        "name": "_attrs",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:235",
+                        "name": "_anyvalue",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    },
+                    {
+                        "id": "main.py:200",
+                        "name": "approve",
+                        "type": "function",
+                        "metadata": {
+                            "file": "main.py"
+                        }
+                    }
+                ],
+                "edges": [
+                    {
+                        "source": "main.py:141",
+                        "target": "main.py:126"
+                    },
+                    {
+                        "source": "main.py:141",
+                        "target": "main.py:126"
+                    },
+                    {
+                        "source": "main.py:178",
+                        "target": "main.py:141"
+                    },
+                    {
+                        "source": "main.py:178",
+                        "target": "main.py:167"
+                    },
+                    {
+                        "source": "main.py:307",
+                        "target": "main.py:178"
+                    },
+                    {
+                        "source": "main.py:307",
+                        "target": "main.py:194"
+                    },
+                    {
+                        "source": "main.py:307",
+                        "target": "main.py:215"
+                    },
+                    {
+                        "source": "main.py:239",
+                        "target": "main.py:235"
+                    },
+                    {
+                        "source": "main.py:256",
+                        "target": "main.py:239"
+                    },
+                    {
+                        "source": "main.py:256",
+                        "target": "main.py:239"
+                    },
+                    {
+                        "source": "main.py:307",
+                        "target": "main.py:256"
+                    },
+                    {
+                        "source": "main.py:307",
+                        "target": "main.py:200"
+                    }
+                ]
+            }
+        }
+    ]
+}

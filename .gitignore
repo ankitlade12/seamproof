@@ -29,3 +29,12 @@ report.json
 
 # Internal planning notes (kept local, not part of the public product)
 SeamProof-DEV-KICKOFF.md
+
+# UiPath coded-automation: generated reference docs, local build cache, secrets
+sut/automation/.agent/
+sut/automation/.claude/
+sut/automation/.uipath/
+sut/automation/.env
+sut/automation/AGENTS.md
+sut/automation/CLAUDE.md
+*.otlp.json

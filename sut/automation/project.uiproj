@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Function",
+  "Name": "seamproof-invoice-sut",
+  "Description": "Invoice-exception process \u2014 a UiPath coded automation used as the SeamProof system under test.",
+  "MainFile": null
+}
