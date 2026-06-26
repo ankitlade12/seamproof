@@ -1,88 +1,99 @@
 # Demo script — 5-minute run of show
 
-Target: a tight problem → solution → live failure → gate arc. Times are guides.
+A tight problem → live failure → gate arc, built entirely on commands that work
+today (the coded automation runs on the UiPath runtime; the gate runs offline).
+Times are guides. Record a clean take of each command in advance as backup.
 
-## 0:00 – 0:40 · The problem
+## 0:00 – 0:35 · The problem
 
-> "In an agentic process, an AI agent, an RPA robot, and a human approver run in
+> "In an agentic process an AI agent, an RPA robot, and a human approver run in
 > one flow. We test each actor in isolation — the agent's eval here, the robot's
 > test there. But production incidents come from the **seams between them**: the
 > agent emits a valid-but-wrong number and the robot faithfully posts it; a
-> boundary case routes around the human approval that policy required."
+> boundary case routes around the human approval that policy required. SeamProof
+> tests the handoffs."
 
-Show the architecture diagram ([architecture.md](architecture.md)). Name the
-three actors and the two seams you'll break.
+Show the architecture diagram ([architecture.md](architecture.md)).
 
-## 0:40 – 1:30 · The SUT, running
+## 0:35 – 1:20 · A real UiPath solution, running
 
-Show the invoice-exception process on **UiPath Automation Cloud**: the Agent
-Builder recon agent, the Maestro routing, the Action Center approval task, the
-Studio robot posting to the mock ERP. Run one **golden** invoice end-to-end so
-the audience sees a clean run produce a trace.
+The system under test is a **UiPath coded automation** ([sut/automation/](../sut/automation/)).
 
 ```bash
-seamproof check -c contracts -t examples/traces/golden_happy_path.json
+cd sut/automation
+uipath run process '{"case": "golden"}'         # runs on the UiPath runtime, traced
 ```
 
-> "Every run emits a trace. SeamProof reads the trace and tests the handoffs.
-> Golden run — **GATE: GO**, 7 of 7 assertions pass."
+> "This is a real UiPath coded automation — agent reconciles, router decides,
+> human approves, robot posts — every step traced with UiPath's `@traced`, the
+> recon agent on the UiPath LLM Gateway. It emits an OpenTelemetry trace."
 
-## 1:30 – 2:45 · Break Seam 1 live (silent corruption)
-
-Inject the failure: the agent returns valid JSON with a hallucinated total
-(`amount: 5400`, line items still sum to `4200`). Re-run the gate:
+Gate the clean run:
 
 ```bash
-seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json
+seamproof check -c ../../contracts --otel golden.otlp.json     # GATE: GO
 ```
 
-> "Schema check passes — it's perfectly valid JSON. But the business outcome is
-> wrong, and the robot would post `$5,400`. SeamProof asserts
-> `amount == sum(line_items)` at the agent→robot seam and catches it:
-> **expected 5400 == 4200, differs by 1200**. **GATE: NO-GO — blocked by
-> seam-1.**"
-
-This is the money shot. Let the red `NO-GO` sit on screen.
-
-## 2:45 – 3:45 · Break Seam 2 (skipped checkpoint)
-
-> "Second seam: routing to the human. A `$9,950` invoice sits in the review band.
-> Output variability routes it straight to auto-post — around the approval policy
-> required."
+## 1:20 – 2:35 · Break Seam 1 live (silent corruption)
 
 ```bash
-seamproof check -c contracts -t examples/traces/seam2_skipped_approval.json
+uipath run process '{"case": "seam1_corruption"}'              # agent emits 5,400; line items sum 4,200
+seamproof check -c ../../contracts --otel seam1_corruption.otlp.json
 ```
 
-> "SeamProof asserts that when policy demands a human, an approved decision must
-> appear in the trace before the robot posts. It's missing. **GATE: NO-GO —
-> blocked by seam-2.** The dangerous case can't auto-complete past us."
+> "Valid JSON, but the business outcome is wrong — the robot would post $5,400.
+> SeamProof asserts `amount == sum(line_items)` at the agent→robot seam:
+> **expected 5400 == 4200, differs by 1200. GATE: NO-GO, blocked by seam-1.**"
 
-## 3:45 – 4:20 · The gate, where it lives
+Let the red NO-GO sit on screen — this is the money shot.
 
-Show the JUnit report feeding **Test Manager** / CI:
+## 2:35 – 3:25 · Break Seam 2 (skipped checkpoint)
 
 ```bash
-seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json -f junit -o report.xml
+uipath run process '{"case": "seam2_near_ceiling"}'            # $9,950 auto-posts around the human
+seamproof check -c ../../contracts --otel seam2_near_ceiling.otlp.json
 ```
 
-> "The gate is a non-zero exit code and a JUnit report, so it drops natively into
-> Test Manager or any CI pipeline. A change that breaks a seam blocks the
-> release — automatically."
+> "A $9,950 invoice in the review band auto-posts around the approval policy
+> required. SeamProof asserts an approved human decision must precede the post —
+> it's missing. **NO-GO, blocked by seam-2.**"
 
-## 4:20 – 5:00 · Coding agent + close
+## 3:25 – 4:05 · Test the agent the UiPath-native way + cross-platform
 
-> "The seam contracts, the adversarial scenarios, and the report generator were
-> authored with a coding agent — Claude Code via UiPath for Coding Agents —
-> from the process definition." (Show `.agent/EVALS.md` and one generated
-> contract.)
->
-> "SeamProof is the missing QA layer for composite agentic processes: not the
-> agent, not the app, but the connective tissue. Test the seams, not just the
-> actors."
+```bash
+uipath eval extract evaluations/eval-sets/recon.json --no-report   # recon quality: all 1.0
+```
+
+> "`uipath eval` tests the agent in isolation — extraction quality scores 1.0.
+> SeamProof tests the seams around it. Different jobs."
+
+```bash
+uipath run process '{"case": "seam1_corruption", "use_langchain": true}'
+```
+
+> "And the recon agent can run as an external **LangChain** agent through the
+> UiPath LLM Gateway — same gate, same result."
+
+## 4:05 – 4:45 · The gate in Test Manager
+
+Show the **SeamProof** project in Test Manager with the three seam test cases
+(`seam-1`, `seam-2`, `seam-3`).
+
+```bash
+seamproof publish -c ../../contracts --otel seam1_corruption.otlp.json \
+  --base-url $UIPATH_URL --project <PROJECT_ID>      # posts the gate result
+```
+
+> "The seams live in Test Manager as managed test cases; the gate publishes
+> Passed/Failed per seam. A change that breaks a seam blocks the release."
+
+## 4:45 – 5:00 · Close
+
+> "SeamProof is the missing QA layer for composite agentic processes — not the
+> agent, not the app, but the connective tissue. The seam contracts and tests were
+> authored with a coding agent. **Test the seams, not just the actors.**"
 
 ## Backup plan
 
-Record a clean take of each `seamproof check` run in advance (Day 3). If the live
-SUT misbehaves on camera, narrate over the recorded gate output — the engine runs
-offline from the bundled traces, so the gate demo never depends on the cloud.
+Every `uipath run` / `seamproof check` was recorded in advance. The gate runs
+offline from the bundled OTLP, so the demo never depends on the cloud being up.

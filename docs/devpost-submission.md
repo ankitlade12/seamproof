@@ -1,0 +1,105 @@
+# Devpost submission — SeamProof
+
+Paste-ready content for the Devpost project page. **Track 3 — UiPath Test Cloud.**
+
+---
+
+## Tagline
+
+The seam tester for agentic processes — assert the agent → robot → human handoffs and gate the release.
+
+## The problem (Inspiration)
+
+In an agentic business process, an AI agent, an RPA robot, and a human approver run
+together in one flow. But testing today validates each actor **in isolation** — the
+agent's eval here, the robot's test there, the human step assumed correct. The
+failures that actually cause production incidents emerge **at the seams between
+actors**:
+
+- **Agent → Robot (silent corruption):** the agent emits structurally valid but
+  semantically wrong output (right JSON, wrong number) and the robot faithfully
+  executes it. The schema check passes; the business outcome is wrong.
+- **Routing → Human (skipped checkpoint):** output variability routes work *around*
+  a human approval that policy required — the dangerous case auto-completes.
+- **Non-functional (cost / SLA drift):** a prompt or model change quietly doubles
+  cost-per-run or breaches the cycle-time SLO.
+
+Isolated agent evals and unit tests never see these. They live in the connective
+tissue.
+
+## What it does
+
+SeamProof treats every handoff as a **contract** and tests it against the real run
+trace. It asserts trace-level properties at each agent → robot → human boundary and
+emits a **go/no-go release gate** with the evidence — the missing QA layer for
+*composite* agentic processes. A change that breaks a seam blocks the release,
+automatically, in Test Manager.
+
+It is structurally UiPath-only: no other platform has real robots and Action Center
+human tasks as first-class actors in one orchestrated process.
+
+## How we built it
+
+- **System under test** — a UiPath **coded automation** (`sut/automation/`) of an
+  invoice-exception process: a recon **agent** (UiPath LLM Gateway, or an external
+  **LangChain** agent), a router, an **Action Center** human approval, and a posting
+  **robot**. Every step is wrapped in UiPath's `@traced`; the run is emitted as
+  **OpenTelemetry**. It runs on the UiPath runtime via `uipath run`.
+- **SeamProof engine** — a small, data-only contract language and trace evaluator
+  (no `eval`, no code execution) with six assertion kinds and a severity-aware gate.
+  It ingests the OTEL trace and renders text / markdown / JSON / JUnit, plus a
+  non-zero exit code that gates CI.
+- **UiPath integration** — ingest Maestro/agent **OpenTelemetry** traces; publish the
+  gate result to **Test Manager** via its v2 REST API (test cases + execution +
+  per-seam results); quality-test the agent with **`uipath eval`**.
+- **Authored with a coding agent** — the seam contracts, adversarial scenarios, and
+  report generator were written with **Claude Code** through *UiPath for Coding
+  Agents* (the bonus criterion).
+
+## UiPath components used
+
+UiPath Automation Cloud · Maestro (orchestration + OTEL traces) · Agent Builder /
+Coded Agents (Python SDK) · UiPath LLM Gateway (AI Trust Layer) · Action Center
+(human task) · Studio/RPA (posting robot) · Test Cloud / Test Manager (gate results)
+· `uipath` CLI + `uipath eval` · `uipath-langchain` (LangChain on the UiPath
+Gateway) · UiPath for Coding Agents.
+
+## Coding agents vs. low-code agents (required clarification)
+
+Both, deliberately. The **system under test** can be built with **low-code** UiPath
+tooling (Agent Builder agent, Studio robot, Action Center human) orchestrated by
+Maestro — and is also shipped as a **coded** automation built with the `uipath`
+Python SDK. **SeamProof itself — the tester** — is authored with a **coding agent**
+(Claude Code). In short: low-code/coded agents *do the work*; the coding agent
+*writes the tests that guard the seams between them*.
+
+## Challenges
+
+- Test Manager has no public "post external results" doc; we reverse-engineered the
+  real **v2 REST API** from the tenant's live Swagger and matched it exactly.
+- Making the whole pipeline demonstrable **offline** (no tenant) while lighting up
+  fully in the tenant — solved with graceful fallbacks and a bundled OTLP fixture.
+
+## Accomplishments
+
+- A working, tested engine (66 tests) that gates real UiPath runs and catches all
+  three seam failures.
+- A genuine UiPath coded automation that runs via `uipath run`, with `@traced`,
+  LLM Gateway, Action Center, `uipath eval`, and an external LangChain agent.
+- The gate's seams created as managed test cases in a real Test Manager project.
+
+## What's next
+
+Auto-discover seams from a Maestro export · publish full executions via an External
+Application scope · a web report UI · broader systems under test.
+
+## Built with
+
+`uipath` · python · maestro · agent-builder · action-center · test-manager ·
+opentelemetry · langchain · claude-code
+
+## Links
+
+- **Repo:** https://github.com/ankitlade12/seamproof
+- **Demo video:** _(add link)_
+- **Presentation:** _(add link)_
