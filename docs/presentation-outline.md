@@ -20,11 +20,14 @@ against the real run trace and gate the release. It's the missing QA layer for
 Action Center humans as first-class actors).
 
 ## 4 · Architecture
-Diagram: `[Agent] → [Router] → [Human] → [Robot]` emitting an OTEL trace →
-**SeamProof** (trace → per-seam contracts → gate) → Test Manager + CI.
+Use **`docs/img/architecture.png`** — `[Agent] → [Router] → [Human] → [Robot]`
+emitting an OTEL trace → **SeamProof** (trace → per-seam contracts → gate) → Test
+Manager + CI.
 > Decoupled by one artifact: the run trace.
 
 ## 5 · The three seams
+Use **`docs/img/seams.png`**.
+
 | Seam | Boundary | Catches |
 | --- | --- | --- |
 | seam-1 | agent→robot | `amount != sum(line_items)` (blocking) |

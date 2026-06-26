@@ -4,6 +4,9 @@ SeamProof has two halves: the **system under test (SUT)** — a real UiPath Maes
 process — and **SeamProof** — the tester that reads the SUT's run traces and gates
 the release. They are decoupled by a single artifact: the **run trace**.
 
+<p align="center"><img src="img/architecture.png" alt="SeamProof architecture" width="820"></p>
+<p align="center"><img src="img/seams.png" alt="The three seams" width="720"></p>
+
 ```
                           ┌─────────────────────────────────────────────┐
                           │        SYSTEM UNDER TEST (Maestro)           │

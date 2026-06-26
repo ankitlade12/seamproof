@@ -11,6 +11,10 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Built for UiPath Test Cloud](https://img.shields.io/badge/UiPath-Test%20Cloud-FA4616.svg)](https://www.uipath.com/product/test-cloud)
 
+<br/>
+
+<img src="docs/img/architecture.png" alt="SeamProof — architecture" width="840">
+
 </div>
 
 ---
@@ -93,6 +97,8 @@ scenario at once with `make demo`.
 The bundled system under test is an **invoice-exception** process (procure-to-pay):
 a recon agent reconciles an invoice against its PO, a router decides auto-post vs.
 human review, a human approves exceptions, and a robot posts to the ERP.
+
+<p align="center"><img src="docs/img/seams.png" alt="The three seams" width="760"></p>
 
 | Seam | Boundary | Severity | Catches |
 | --- | --- | --- | --- |
