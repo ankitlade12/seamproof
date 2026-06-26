@@ -107,11 +107,25 @@ def test_publish_requires_project():
         publish(result, PublishConfig(base_url="https://x"), transport=lambda *a: {"id": "x"})
 
 
-def test_publish_requires_testcase_ids_or_container():
+def test_publish_auto_creates_without_container():
     result = _result("golden_happy_path.json")
-    with pytest.raises(SeamProofError):
-        publish(result, PublishConfig(base_url="https://x", project_id="P1"),
-                transport=lambda *a: {"id": "x"})
+    calls = []
+
+    def fake(method, suffix, body):
+        calls.append(suffix)
+        return {"id": f"id-{len(calls)}"}
+
+    publish(result, PublishConfig(base_url="https://x", project_id="P1"), transport=fake)
+    assert sum("testcases" in s for s in calls) == 3  # auto-created, no container required
+
+
+def test_tenant_base_respects_full_url():
+    # A UIPATH_URL from `uipath auth` already includes /{org}/{tenant}: don't re-append.
+    config = PublishConfig(
+        base_url="https://staging.uipath.com/hackathon26_1024/DefaultTenant",
+        organization="cc12aa98-guid", tenant="ignored",
+    )
+    assert config.tenant_base == "https://staging.uipath.com/hackathon26_1024/DefaultTenant"
 
 
 def test_config_from_env(monkeypatch):

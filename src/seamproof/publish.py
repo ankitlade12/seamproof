@@ -25,6 +25,7 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 from ._version import __version__
 from .errors import SeamProofError
@@ -81,8 +82,12 @@ class PublishConfig:
     def tenant_base(self) -> str:
         if not self.base_url:
             raise SeamProofError(f"no base URL; set {ENV_BASE_URL} or pass --base-url")
-        parts = [self.base_url.rstrip("/")]
-        parts += [p for p in (self.organization, self.tenant) if p]
+        base = self.base_url.rstrip("/")
+        # A UIPATH_URL from `uipath auth` already includes /{org}/{tenant}; only
+        # append org/tenant when base_url is a bare host (no path).
+        if urlparse(base).path.strip("/"):
+            return base
+        parts = [base] + [p for p in (self.organization, self.tenant) if p]
         return "/".join(parts)
 
 
@@ -103,13 +108,17 @@ def _reason_for(cr: ContractResult) -> str:
 
 
 def _testcase_body(config: PublishConfig, cr: ContractResult) -> dict[str, Any]:
-    return {
+    # automationId must be a GUID, so the seam id goes in foreignReference (a
+    # free-form string). containerId is optional; only send it when given.
+    body: dict[str, Any] = {
         "name": f"{cr.contract.id} · {cr.contract.name}",
         "description": cr.contract.description or str(cr.contract.boundary),
         "projectId": config.project_id,
-        "containerId": config.container_id,
-        "automationId": cr.contract.id,
+        "foreignReference": cr.contract.id,
     }
+    if config.container_id:
+        body["containerId"] = config.container_id
+    return body
 
 
 def build_payload(result: GateResult, config: PublishConfig, testcase_ids: list[str]) -> dict[str, Any]:
@@ -199,6 +208,7 @@ def _rest_caller(config: PublishConfig) -> Caller:
             headers={
                 "Authorization": f"Bearer {config.token}",
                 "Content-Type": "application/json",
+                "Accept": "application/json",
                 "User-Agent": f"SeamProof/{__version__}",
             },
             method=method,
@@ -208,9 +218,15 @@ def _rest_caller(config: PublishConfig) -> Caller:
                 raw = response.read().decode().strip()
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as exc:
-            raise SeamProofError(
-                f"Test Manager {method} {suffix} -> HTTP {exc.code}: {exc.read().decode()[:300]}"
-            ) from exc
+            body = exc.read().decode()[:300]
+            hint = ""
+            if exc.code in (401, 403):
+                hint = (
+                    " — token expired or missing a Test Manager scope/role. Posting test "
+                    "executions needs a scope `uipath auth` does not grant; use an External "
+                    "Application (client credentials) with test-execution scopes."
+                )
+            raise SeamProofError(f"Test Manager {method} {suffix} -> HTTP {exc.code}: {body}{hint}") from exc
         except urllib.error.URLError as exc:
             raise SeamProofError(f"could not reach Test Manager: {exc.reason}") from exc
 
@@ -250,12 +266,6 @@ def publish(
     if dry_run:
         return {"dry_run": True, "base": f"{config.tenant_base}/{config.service}",
                 "requests": plan_requests(result, config)}
-
-    missing = [cr.contract.id for cr in result.results if cr.contract.id not in config.testcase_ids]
-    if missing and not config.container_id:
-        raise SeamProofError(
-            f"no test case id for {missing}; pass --testcase-map or --container to auto-create them"
-        )
 
     call = transport or _default_caller(config)
     tc_ids = dict(config.testcase_ids)

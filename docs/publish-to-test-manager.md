@@ -80,6 +80,24 @@ seamproof publish -c contracts --otel run.otlp.json \
 - `UIPATH_URL` / `UIPATH_ORGANIZATION_ID` / `UIPATH_TENANT_NAME` / `UIPATH_PROJECT_ID`
   are read from the environment if you omit the matching flags.
 
+## Permissions (important)
+
+Creating test **cases** works with the scopes `uipath auth` grants
+(`TM.TestCases`, `TM.TestSets`, `TM.Requirements`). Creating a test **execution /
+results** needs a test-execution scope the interactive login does **not** include —
+a direct `seamproof publish` reaches `POST .../testexecutions` and returns **403**
+with a normal user token (verified on the hackathon tenant).
+
+To post results, authenticate with an **External Application** (Automation Cloud →
+Admin → External Applications) that has the Test Manager execution scopes, and run
+unattended:
+
+```bash
+uipath auth --base-url <tenant-url> --client-id <id> --client-secret <secret> --scope <scopes>
+```
+
+`seamproof publish` then uses the SDK session and the full v2 flow completes.
+
 ## Native alternative
 
 Test Manager also imports results automatically when an automated test runs as part
