@@ -1,28 +1,20 @@
-"""Publish a SeamProof gate result to UiPath Test Manager.
+"""Publish a SeamProof gate result to UiPath Test Manager (REST v2).
 
-This is the output bridge: it maps a :class:`GateResult` onto the Test Manager
-result model (an execution composed of per-test-case logs) and posts it through
-the **UiPath Automation Cloud** REST API, authenticated with UiPath's standard
-credentials.
+The Test Manager v2 result model is test-case-centric and multi-step. These
+endpoints and field shapes were verified against a live tenant's Swagger
+(``testmanager_/swagger/v2/swagger.json``); every call is tenant-scoped under
+``{base}/{org}/{tenant}/testmanager_/``:
 
-Two transports, same payload:
+  1. ensure a test case exists per seam   ``POST api/v2/{projectId}/testcases``
+  2. create a ThirdParty execution        ``POST api/v2/{projectId}/testexecutions``
+  3. create a log per seam                ``POST api/v2/{projectId}/testcaselogs``
+  4. set each log's result Passed/Failed  ``POST api/v2/{projectId}/testcaselogs/{id}/override-result``
+  5. finish the execution                 ``POST api/v2/{projectId}/testexecutions/{id}/finish``
 
-* **SDK transport** — uses the official ``uipath`` package
-  (``from uipath.platform import UiPath``) so auth, base-URL, and org/tenant
-  scoping are handled by UiPath itself. Enabled when ``uipath`` is installed
-  (``pip install "seamproof[uipath]"``).
-* **REST transport** — a stdlib ``urllib`` fallback using ``UIPATH_URL`` +
-  ``UIPATH_ACCESS_TOKEN`` Bearer auth, so the core package needs no extra
-  dependency.
-
-``--dry-run`` builds and returns the exact payload without sending it, so the
-mapping is fully testable offline and ready to point at a tenant the moment
-credentials exist.
-
-The REST resource path follows the Test Manager API
-(https://docs.uipath.com/test-manager/automation-cloud/latest/user-guide/test-manager-api-integration);
-confirm the exact path against your tenant's API version, or override it with
-``--endpoint``.
+Auth follows UiPath's conventions. With the official ``uipath`` SDK installed and
+``uipath auth`` completed, the SDK transport picks up the session automatically;
+otherwise a stdlib REST transport uses ``UIPATH_URL`` + ``UIPATH_ACCESS_TOKEN``.
+``--dry-run`` builds the full request plan without sending it.
 """
 from __future__ import annotations
 
@@ -31,7 +23,7 @@ import os
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from ._version import __version__
@@ -46,9 +38,13 @@ ENV_ORG = "UIPATH_ORGANIZATION_ID"
 ENV_TENANT = "UIPATH_TENANT_NAME"
 ENV_PROJECT = "UIPATH_PROJECT_ID"
 
-DEFAULT_ENDPOINT = "testmanager_/api/v1/projects/{project_id}/automated-executions"
+SERVICE = "testmanager_"
+# Test Manager result enum (verified): None | Passed | Failed | Restricted.
+RESULT_PASSED = "Passed"
+RESULT_FAILED = "Failed"
 
-Transport = Callable[["PublishConfig", dict[str, Any]], dict[str, Any]]
+# A transport makes one authenticated request and returns the parsed JSON body.
+Caller = Callable[[str, str, dict[str, Any]], dict[str, Any]]
 
 
 @dataclass
@@ -58,12 +54,14 @@ class PublishConfig:
     organization: str | None = None
     tenant: str | None = None
     project_id: str | None = None
-    endpoint: str = DEFAULT_ENDPOINT
+    container_id: str | None = None          # section to auto-create test cases in
+    testcase_ids: dict[str, str] = field(default_factory=dict)  # seam id -> TM test case id
     test_set: str | None = None
+    service: str = SERVICE
 
     @classmethod
     def from_env(cls, **overrides: Any) -> PublishConfig:
-        env = cls(
+        cfg = cls(
             base_url=os.environ.get(ENV_BASE_URL),
             token=os.environ.get(ENV_TOKEN),
             organization=os.environ.get(ENV_ORG),
@@ -72,63 +70,92 @@ class PublishConfig:
         )
         for key, value in overrides.items():
             if value is not None:
-                setattr(env, key, value)
-        return env
+                setattr(cfg, key, value)
+        return cfg
+
+    def suffix(self, tail: str) -> str:
+        """Service-relative path, e.g. ``testmanager_/api/v2/<proj>/testexecutions``."""
+        return f"{self.service}/api/v2/{self.project_id}/{tail}"
 
     @property
-    def relative_path(self) -> str:
-        return self.endpoint.format(project_id=self.project_id or "")
-
-    @property
-    def full_url(self) -> str:
+    def tenant_base(self) -> str:
         if not self.base_url:
             raise SeamProofError(f"no base URL; set {ENV_BASE_URL} or pass --base-url")
         parts = [self.base_url.rstrip("/")]
         parts += [p for p in (self.organization, self.tenant) if p]
-        parts.append(self.relative_path.lstrip("/"))
         return "/".join(parts)
 
 
 # --------------------------------------------------------------------------- #
-# Payload mapping (GateResult -> Test Manager result model)
+# Result mapping (GateResult -> Test Manager request bodies)
 # --------------------------------------------------------------------------- #
 
-def _test_case(cr: ContractResult) -> dict[str, Any]:
-    blocking_failure = cr.contract.blocking and not cr.passed
+def _result_for(cr: ContractResult) -> str:
+    return RESULT_PASSED if cr.passed else RESULT_FAILED
+
+
+def _reason_for(cr: ContractResult) -> str:
+    if cr.passed:
+        return f"All {len(cr.assertions)} checks passed."
+    failed = "; ".join(f"{a.id}: {a.detail}" for a in cr.failures)
+    tag = "" if cr.contract.blocking else " (advisory — not blocking the gate)"
+    return f"{cr.contract.boundary}{tag} — {failed}"
+
+
+def _testcase_body(config: PublishConfig, cr: ContractResult) -> dict[str, Any]:
     return {
         "name": f"{cr.contract.id} · {cr.contract.name}",
-        "externalId": cr.contract.id,
-        "status": "Failed" if blocking_failure else "Passed",
-        "severity": cr.contract.severity,
-        "boundary": str(cr.contract.boundary),
-        "steps": [
-            {
-                "name": a.id,
-                "status": "Passed" if a.passed else "Failed",
-                "log": a.detail,
-            }
-            for a in cr.assertions
-        ],
-    }
-
-
-def build_payload(result: GateResult, config: PublishConfig) -> dict[str, Any]:
-    failed = not result.decision.is_go
-    return {
-        "name": config.test_set or f"SeamProof — {result.trace.process}",
-        "externalReference": result.trace.trace_id,
+        "description": cr.contract.description or str(cr.contract.boundary),
         "projectId": config.project_id,
-        "status": "Failed" if failed else "Passed",
-        "tool": {"name": "SeamProof", "version": __version__},
-        "summary": {
-            "decision": result.decision.value,
-            "totalAssertions": result.total_assertions,
-            "failedAssertions": result.failed_assertions,
-            "blockingFailures": [cr.contract.id for cr in result.blocking_failures],
-            "advisoryFailures": [cr.contract.id for cr in result.advisory_failures],
-        },
-        "testCases": [_test_case(cr) for cr in result.results],
+        "containerId": config.container_id,
+        "automationId": cr.contract.id,
     }
+
+
+def build_payload(result: GateResult, config: PublishConfig, testcase_ids: list[str]) -> dict[str, Any]:
+    """The CreateTestExecutionRequest body (source = ThirdParty: SeamProof)."""
+    return {
+        "projectId": config.project_id,
+        "testCaseIds": testcase_ids,
+        "testSetId": None,
+        "source": "ThirdParty",
+        "sourceDetails": f"SeamProof {__version__}",
+        "name": config.test_set or f"SeamProof — {result.trace.process} ({result.decision.value})",
+        "description": (
+            f"Gate {result.decision.value} for trace {result.trace.trace_id}: "
+            f"{result.total_assertions - result.failed_assertions}/{result.total_assertions} checks passed."
+        ),
+    }
+
+
+def _override_body(cr: ContractResult) -> dict[str, Any]:
+    return {"currentResult": _result_for(cr), "reason": _reason_for(cr)}
+
+
+# --------------------------------------------------------------------------- #
+# Request plan (used by --dry-run and as the execution order)
+# --------------------------------------------------------------------------- #
+
+def plan_requests(result: GateResult, config: PublishConfig) -> list[dict[str, Any]]:
+    """Ordered, human-readable plan with placeholders for ids resolved at run time."""
+    plan: list[dict[str, Any]] = []
+    for cr in result.results:
+        if cr.contract.id not in config.testcase_ids:
+            plan.append({"purpose": f"create test case {cr.contract.id}", "method": "POST",
+                         "path": config.suffix("testcases"), "body": _testcase_body(config, cr)})
+    ids = [config.testcase_ids.get(cr.contract.id, f"<{cr.contract.id}>") for cr in result.results]
+    plan.append({"purpose": "create execution", "method": "POST",
+                 "path": config.suffix("testexecutions"), "body": build_payload(result, config, ids)})
+    for cr in result.results:
+        tc = config.testcase_ids.get(cr.contract.id, f"<{cr.contract.id}>")
+        plan.append({"purpose": f"log {cr.contract.id}", "method": "POST",
+                     "path": config.suffix("testcaselogs"),
+                     "body": {"testCaseId": tc, "testExecutionId": "<exec>"}})
+        plan.append({"purpose": f"result {cr.contract.id} = {_result_for(cr)}", "method": "POST",
+                     "path": config.suffix("testcaselogs/<log>/override-result"), "body": _override_body(cr)})
+    plan.append({"purpose": "finish execution", "method": "POST",
+                 "path": config.suffix("testexecutions/<exec>/finish"), "body": {}})
+    return plan
 
 
 # --------------------------------------------------------------------------- #
@@ -143,59 +170,117 @@ def sdk_available() -> bool:
         return False
 
 
-def sdk_transport(config: PublishConfig, payload: dict[str, Any]) -> dict[str, Any]:
-    """Post via the official uipath SDK (handles auth + org/tenant scoping)."""
-    try:
-        from uipath.platform import UiPath
-    except Exception as exc:  # pragma: no cover - exercised only with the extra installed
-        raise SeamProofError(
-            "the uipath SDK is not installed; run `pip install \"seamproof[uipath]\"` "
-            "or use the REST transport / --dry-run"
-        ) from exc
-    client = UiPath(base_url=config.base_url, secret=config.token)
-    response = client.api_client.request(
-        "POST", config.relative_path, scoped="tenant", json=payload
-    )
-    return {"transport": "sdk", "status_code": response.status_code, "body": response.text}
+def _sdk_caller(config: PublishConfig) -> Caller:
+    from uipath.platform import UiPath
+
+    # An explicit token forces explicit creds; otherwise UiPath() reads the full
+    # `uipath auth` session (base url + org/tenant + token), even if --base-url was
+    # passed only for the result-URL display.
+    client = UiPath(base_url=config.base_url, secret=config.token) if config.token else UiPath()
+
+    def call(method: str, suffix: str, body: dict[str, Any]) -> dict[str, Any]:
+        response = client.api_client.request(method, suffix, scoped="tenant", json=body)
+        text = getattr(response, "text", "") or ""
+        return json.loads(text) if text.strip() else {}
+
+    return call
 
 
-def rest_transport(config: PublishConfig, payload: dict[str, Any]) -> dict[str, Any]:
-    """Post via stdlib urllib using UIPATH_URL + UIPATH_ACCESS_TOKEN Bearer auth."""
+def _rest_caller(config: PublishConfig) -> Caller:
     if not config.token:
-        raise SeamProofError(f"no access token; set {ENV_TOKEN} or pass --token, or use --dry-run")
-    request = urllib.request.Request(
-        config.full_url,
-        data=json.dumps(payload).encode(),
-        headers={
-            "Authorization": f"Bearer {config.token}",
-            "Content-Type": "application/json",
-            "User-Agent": f"SeamProof/{__version__}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 (https URL)
-            return {"transport": "rest", "status_code": response.status, "body": response.read().decode()}
-    except urllib.error.HTTPError as exc:
         raise SeamProofError(
-            f"Test Manager returned HTTP {exc.code}: {exc.read().decode()[:300]}"
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise SeamProofError(f"could not reach Test Manager: {exc.reason}") from exc
+            f"no access token; run `uipath auth`, set {ENV_TOKEN}, or use --dry-run"
+        )
 
+    def call(method: str, suffix: str, body: dict[str, Any]) -> dict[str, Any]:
+        url = f"{config.tenant_base}/{suffix}"
+        request = urllib.request.Request(
+            url, data=json.dumps(body).encode(),
+            headers={
+                "Authorization": f"Bearer {config.token}",
+                "Content-Type": "application/json",
+                "User-Agent": f"SeamProof/{__version__}",
+            },
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+                raw = response.read().decode().strip()
+                return json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as exc:
+            raise SeamProofError(
+                f"Test Manager {method} {suffix} -> HTTP {exc.code}: {exc.read().decode()[:300]}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise SeamProofError(f"could not reach Test Manager: {exc.reason}") from exc
+
+    return call
+
+
+def _default_caller(config: PublishConfig) -> Caller:
+    # Prefer the SDK (it carries the uipath-auth session) unless an explicit token
+    # forces the dependency-free REST path.
+    if sdk_available() and not config.token:
+        return _sdk_caller(config)
+    return _rest_caller(config)
+
+
+def _new_id(response: dict[str, Any]) -> str:
+    for key in ("id", "Id", "testExecutionId", "testCaseLogId"):
+        if response.get(key):
+            return str(response[key])
+    raise SeamProofError(f"Test Manager response had no id field: {response}")
+
+
+# --------------------------------------------------------------------------- #
+# Publish
+# --------------------------------------------------------------------------- #
 
 def publish(
     result: GateResult,
     config: PublishConfig,
     *,
     dry_run: bool = False,
-    transport: Transport | None = None,
+    transport: Caller | None = None,
 ) -> dict[str, Any]:
-    """Build the payload and (unless ``dry_run``) send it to Test Manager."""
-    payload = build_payload(result, config)
+    """Create the execution, log + set each seam's result, and finish it."""
+    if not config.project_id:
+        raise SeamProofError("a Test Manager project id is required (--project or UIPATH_PROJECT_ID)")
+
     if dry_run:
-        endpoint = config.full_url if config.base_url else config.relative_path
-        return {"dry_run": True, "endpoint": endpoint, "payload": payload}
-    if transport is None:
-        transport = sdk_transport if sdk_available() else rest_transport
-    return transport(config, payload)
+        return {"dry_run": True, "base": f"{config.tenant_base}/{config.service}",
+                "requests": plan_requests(result, config)}
+
+    missing = [cr.contract.id for cr in result.results if cr.contract.id not in config.testcase_ids]
+    if missing and not config.container_id:
+        raise SeamProofError(
+            f"no test case id for {missing}; pass --testcase-map or --container to auto-create them"
+        )
+
+    call = transport or _default_caller(config)
+    tc_ids = dict(config.testcase_ids)
+    for cr in result.results:
+        if cr.contract.id not in tc_ids:
+            tc_ids[cr.contract.id] = _new_id(call("POST", config.suffix("testcases"), _testcase_body(config, cr)))
+
+    execution = call("POST", config.suffix("testexecutions"),
+                     build_payload(result, config, [tc_ids[cr.contract.id] for cr in result.results]))
+    exec_id = _new_id(execution)
+
+    for cr in result.results:
+        log = call("POST", config.suffix("testcaselogs"),
+                   {"testCaseId": tc_ids[cr.contract.id], "testExecutionId": exec_id})
+        log_id = _new_id(log)
+        call("POST", config.suffix(f"testcaselogs/{log_id}/override-result"), _override_body(cr))
+
+    call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), {})
+    url = None
+    if config.base_url:
+        url = f"{config.tenant_base}/{config.service}/#/projects/{config.project_id}/test-executions/{exec_id}"
+    return {
+        "published": True,
+        "project_id": config.project_id,
+        "execution_id": exec_id,
+        "decision": result.decision.value,
+        "url": url,
+    }

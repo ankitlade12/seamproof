@@ -66,12 +66,13 @@ def test_ingest_then_check_roundtrip(tmp_path, capsys):
     assert code == 1  # the normalised trace still trips seam-1
 
 
-def test_publish_dry_run_prints_payload(capsys):
+def test_publish_dry_run_prints_plan(capsys):
     code = main([
         "publish", "-c", CONTRACTS, "--otel", OTEL,
-        "--project", "TM-1", "--base-url", "https://cloud.uipath.com", "--dry-run",
+        "--project", "TM-1", "--base-url", "https://staging.uipath.com", "--dry-run",
     ])
     assert code == 0
     out = capsys.readouterr().out
     assert "dry run" in out.lower()
-    assert '"status": "Failed"' in out
+    assert "testexecutions" in out      # the v2 endpoint appears in the plan
+    assert "ThirdParty" in out          # the execution source

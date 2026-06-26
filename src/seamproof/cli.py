@@ -74,10 +74,16 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_trace_source(pub)
     pub.add_argument("--project", default=None, help="Test Manager project id (or UIPATH_PROJECT_ID)")
     pub.add_argument("--base-url", default=None, help="UiPath base URL (or UIPATH_URL)")
-    pub.add_argument("--token", default=None, help="access token (or UIPATH_ACCESS_TOKEN)")
+    pub.add_argument("--token", default=None, help="access token (or UIPATH_ACCESS_TOKEN / uipath auth)")
+    pub.add_argument("--org", default=None, help="organization (or UIPATH_ORGANIZATION_ID)")
+    pub.add_argument("--tenant", default=None, help="tenant name (or UIPATH_TENANT_NAME)")
+    pub.add_argument("--container", default=None, help="section id to auto-create the seam test cases in")
+    pub.add_argument(
+        "--testcase-map", default=None,
+        help="existing Test Manager test case ids, e.g. 'seam-1=ID1,seam-2=ID2,seam-3=ID3'",
+    )
     pub.add_argument("--test-set", default=None, help="name for the Test Manager execution")
-    pub.add_argument("--endpoint", default=None, help="override the Test Manager REST path")
-    pub.add_argument("--dry-run", action="store_true", help="print the payload without sending it")
+    pub.add_argument("--dry-run", action="store_true", help="print the full request plan without sending")
     pub.set_defaults(func=_cmd_publish)
     return parser
 
@@ -121,6 +127,15 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_testcase_map(raw: str | None) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for pair in (raw or "").split(","):
+        key, _, value = pair.partition("=")
+        if key.strip() and value.strip():
+            mapping[key.strip()] = value.strip()
+    return mapping
+
+
 def _cmd_publish(args: argparse.Namespace) -> int:
     contracts = load_contracts(args.contracts)
     trace = _resolve_trace(args)
@@ -129,20 +144,25 @@ def _cmd_publish(args: argparse.Namespace) -> int:
     config = PublishConfig.from_env(
         base_url=args.base_url,
         token=args.token,
+        organization=args.org,
+        tenant=args.tenant,
         project_id=args.project,
+        container_id=args.container,
+        testcase_ids=_parse_testcase_map(args.testcase_map) or None,
         test_set=args.test_set,
-        endpoint=args.endpoint,
     )
     outcome = publish(result, config, dry_run=args.dry_run)
 
     print(render(result, "text"))
     print()
     if outcome.get("dry_run"):
-        print(f"[dry run] would POST to: {outcome['endpoint']}")
-        print(json.dumps(outcome["payload"], indent=2))
+        print(f"[dry run] {len(outcome['requests'])} requests under {outcome['base']}:")
+        print(json.dumps(outcome["requests"], indent=2))
     else:
-        print(f"Published via {outcome.get('transport')} transport "
-              f"(HTTP {outcome.get('status_code')}) — gate: {result.decision.value}")
+        print(f"Published to Test Manager — execution {outcome['execution_id']} "
+              f"(gate {outcome['decision']})")
+        if outcome.get("url"):
+            print(outcome["url"])
     return 0
 
 
