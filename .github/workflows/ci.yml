@@ -59,3 +59,20 @@ jobs:
       # Render the Test Manager payload offline (no tenant needed).
       - name: Publish dry-run renders a Test Manager payload
         run: seamproof publish -c contracts --otel examples/otel/maestro_seam1_export.json --base-url https://cloud.uipath.com --project demo --dry-run
+      # Surface the gate verdict in the GitHub Actions run summary and as a JUnit
+      # artifact — this is the release gate, visible in CI.
+      - name: Gate report in the run summary
+        if: always()
+        run: |
+          seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json -f junit -o seam-gate.xml --no-fail
+          {
+            echo "## SeamProof — release gate";
+            echo "";
+            seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json -f markdown --no-fail;
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload JUnit gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seam-gate-junit
+          path: seam-gate.xml

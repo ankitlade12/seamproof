@@ -120,6 +120,7 @@ class ProcessInput:
     use_llm: bool = False               # recon via the UiPath LLM Gateway
     use_langchain: bool = False         # recon via an external LangChain agent
     use_action_center: bool = False     # create a real Action Center task at the human step
+    erp_url: str | None = None          # if set, the robot POSTs the invoice to this ERP endpoint
     route_mode: str | None = None       # override the case's routing mode
     out: str | None = None              # write the OTLP doc here when set
 
