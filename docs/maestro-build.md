@@ -11,6 +11,13 @@ seams, a clear gate.
 > a **✅ checkpoint** and a **🔌 SeamProof** note telling you what the step must
 > emit so the gate can read it.
 
+> ⚡ **Fast path (no canvas required).** A runnable UiPath **coded automation** of
+> this exact process already lives in
+> [`../sut/automation/`](../sut/automation/). It runs today with
+> `uipath run process '{"case": "seam1_corruption"}'`, emits the OTEL trace, and
+> SeamProof gates it. Use it to demo end-to-end immediately and as the backup if
+> the low-code build below runs long — both emit the same trace shape.
+
 ## The shape
 
 ```

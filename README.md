@@ -166,6 +166,11 @@ SeamProof falls back to a stdlib REST call using `UIPATH_URL` +
 `UIPATH_ACCESS_TOKEN`. Everything is testable offline via `--dry-run` and the
 bundled OTLP fixture, so it's ready to point at a tenant the moment you have one.
 
+Need a real trace to feed it? The system under test ships as a runnable **UiPath
+coded automation** in [`sut/automation/`](sut/automation/) — `uipath run process
+'{"case": "seam1_corruption"}'` executes it on the UiPath runtime (steps traced
+with `@traced`, recon via the UiPath LLM Gateway) and emits exactly this OTLP.
+
 ## UiPath components used
 
 SeamProof is a Track 3 (UiPath Test Cloud) solution. The system under test runs on
@@ -242,6 +247,7 @@ seamproof/
 ├── examples/otel/        # sample UiPath Maestro OpenTelemetry export (OTLP/JSON)
 ├── scenarios/            # scenario suite mapping each trace to its expected gate outcome
 ├── sut/                  # system under test — UiPath Maestro / Agent Builder / RPA exports
+│   └── automation/       # runnable UiPath coded automation (uipath.json, @traced steps) of the same process
 ├── tests/                # unit tests + data-driven scenario regression suite
 ├── docs/                 # architecture, seam-contract reference, demo script
 └── .agent/EVALS.md       # brief for the coding agent that authors the seams

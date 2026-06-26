@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **UiPath coded-automation system under test** (`sut/automation/`): a real
+  `uipath.json` project with a dataclass entrypoint, every step instrumented with
+  UiPath's `@traced`, recon through the UiPath **LLM Gateway**
+  (`UiPath().llm.chat_completions`), and OTLP emission that SeamProof gates. Runs
+  through `uipath run` in the tenant or fully offline (`python main.py`), and is
+  regression-tested end to end (SUT → OTLP → gate) in `tests/test_sut_automation.py`.
+- **Maestro build guide** (`docs/maestro-build.md`) and paste-ready Agent Builder
+  artifacts (`sut/agent/`, `sut/data/`) for the low-code build of the same process.
+
 ## [0.2.0] - 2026-06-25
 
 UiPath integration — connect the engine to Automation Cloud at both ends.
