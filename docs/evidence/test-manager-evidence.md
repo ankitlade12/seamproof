@@ -19,6 +19,7 @@ next to this file: [`test-manager-result.json`](test-manager-result.json).
 | Source | `TestManager` |
 | Test set | `5726c56c-d65f-0300-4690-0b49d1026440` (`SEAM:13`) |
 | Started / finished | `2026-06-27T00:17:09Z` → `2026-06-27T00:17:14Z` |
+| Status | **Finished** |
 | **Result** | **passed 2 · failed 1** |
 
 ## Per-seam results (test-case logs)
@@ -52,11 +53,10 @@ seamproof publish -c contracts --otel run.otlp.json \
 
 ## Notes
 
-- The execution-level `status` field reads `Running` in the raw JSON: the preview v2
-  API leaves a manual test-case log's `executionEnd` open, so it never flips the
-  rollup string. It does **not** affect the recorded outcome — the per-case results
-  (`Failed` / `Passed` / `Passed`) and the `passed: 2, failed: 1` counts are final and
-  are what's shown above.
+- Each per-seam log is **finished** (`testcaselogs/testexecution/{id}/finish`) once its
+  result is set — that's what moves the execution to a terminal **`Finished`** status
+  rather than leaving it on "Running". (Gotcha: `override-result` alone records the
+  result but never ends the log, so the execution would otherwise stay "Running".)
 - Viewing this in the Test Manager **UI** requires a Test Manager (Testing) **named-user
   license** on the tenant; the hackathon staging tenant's pool doesn't include one, so
   the UI shows an `unauthorized?hasRequiredLicense` page for the user even with the

@@ -42,6 +42,9 @@ def test_plan_maps_results_to_passed_failed():
     assert "result seam-1 = Failed" in overrides
     assert "result seam-2 = Passed" in overrides
     assert "result seam-3 = Passed" in overrides
+    # each log is also *finished* — that's what moves the execution off "Running"
+    log_finishes = {r["purpose"] for r in plan if "testcaselogs" in r["path"] and r["path"].endswith("/finish")}
+    assert "finish log seam-1 = Failed" in log_finishes
 
 
 def test_suffix_and_tenant_base():
@@ -78,8 +81,8 @@ def test_publish_runs_full_flow_with_existing_testcases():
                            tenant="t", project_id="P1", testcase_ids=IDS)
     out = publish(result, config, transport=fake)
     assert out["published"] is True
-    # testset + assign + execution + (3 start-logs + 3 results) + finish = 10 (cases pre-exist)
-    assert len(calls) == 10
+    # testset + assign + execution + 3×(start + result + finish) + finish = 13 (cases pre-exist)
+    assert len(calls) == 13
     assert all(m == "POST" for m, _ in calls)
     assert any("api/v2/P1/testexecutions" in s for _, s in calls)
     assert any("testsets" in s for _, s in calls)
@@ -98,8 +101,8 @@ def test_publish_auto_creates_testcases_with_container():
     config = PublishConfig(base_url="https://staging.uipath.com", organization="o",
                            tenant="t", project_id="P1", container_id="C1")
     publish(result, config, transport=fake)
-    # 3 test cases + testset + assign + execution + 6 (start/result) + finish = 13 calls
-    assert len(calls) == 13
+    # 3 cases + testset + assign + execution + 3×(start/result/finish) + finish = 16 calls
+    assert len(calls) == 16
     assert sum(s.endswith("/testcases") for s in calls) == 3
 
 

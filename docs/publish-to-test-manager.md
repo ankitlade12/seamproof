@@ -15,7 +15,7 @@ result in [`evidence/test-manager-evidence.md`](evidence/test-manager-evidence.m
 1. `POST .../testcases` — one test case per seam (unless you pass existing ids via `--testcase-map`)
 2. `POST .../testsets` + `POST .../testsets/{id}/assigntestcases` — a test set holding the seams (an execution must run a set)
 3. `POST .../testexecutions` — a `TestManager` execution over that set (`source: TestManager`; `ThirdParty` 500s for non-automated cases)
-4. per seam: `POST .../testcaselogs/testexecution/{id}/start` then `.../testcaselogs/{logId}/override-result` — `Passed`/`Failed` with the failure detail
+4. per seam: `POST .../testcaselogs/testexecution/{id}/start` → `.../testcaselogs/{logId}/override-result` (`Passed`/`Failed` + reason) → `.../testcaselogs/testexecution/{id}/finish` (ends the log — without this the execution stays stuck on **Running** instead of reaching a terminal **Finished** status)
 5. `POST .../testexecutions/{id}/finish` (no body)
 
 ## Step 1 — Authenticate (only you can do this)

@@ -35,7 +35,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rewrote the Test Manager publisher to the real **v2** flow, **verified end to end
   against the tenant**: create test cases → a test set (`assigntestcases` via a raw
   GUID array) → a `TestManager` execution over the set → per-seam log
-  `start` + `override-result` (Passed/Failed) → `finish`. (`ThirdParty` 500s for
+  `start` + `override-result` (Passed/Failed) + **`testcaselogs/.../finish`** → execution
+  `finish`. Ending each log is what lands the execution on a terminal **Finished**
+  status — `override-result` alone leaves it stuck on "Running". (`ThirdParty` 500s for
   non-automated cases; the execution needs a test set.) The SDK transport uses the
   `uipath auth` session; `--dry-run` prints the full request plan. New flags:
   `--org`, `--tenant`, `--container`, `--testcase-map`. Posting results needs the

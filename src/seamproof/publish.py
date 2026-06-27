@@ -148,6 +148,14 @@ def _override_body(cr: ContractResult) -> dict[str, Any]:
     return {"currentResult": _result_for(cr), "reason": _reason_for(cr)}
 
 
+def _finish_body(cr: ContractResult, testcase_id: str) -> dict[str, Any]:
+    # Ending the log (not just override-result) is what moves the execution out of
+    # "Running" into a terminal status. A failed assertion is a clean Failed, not a
+    # runtime error, so hasError stays False.
+    return {"testCaseId": testcase_id, "result": _result_for(cr), "runId": 1,
+            "hasError": False, "isPostConditionMet": True}
+
+
 # --------------------------------------------------------------------------- #
 # Request plan (used by --dry-run and as the execution order)
 # --------------------------------------------------------------------------- #
@@ -174,6 +182,9 @@ def plan_requests(result: GateResult, config: PublishConfig) -> list[dict[str, A
                      "body": {"testCaseId": tc, "runId": 1}})
         plan.append({"purpose": f"result {cr.contract.id} = {_result_for(cr)}", "method": "POST",
                      "path": config.suffix("testcaselogs/<log>/override-result"), "body": _override_body(cr)})
+        plan.append({"purpose": f"finish log {cr.contract.id} = {_result_for(cr)}", "method": "POST",
+                     "path": config.suffix("testcaselogs/testexecution/<exec>/finish"),
+                     "body": _finish_body(cr, tc)})
     plan.append({"purpose": "finish execution", "method": "POST",
                  "path": config.suffix("testexecutions/<exec>/finish"), "body": None})
     return plan
@@ -297,12 +308,14 @@ def publish(
     execution = call("POST", config.suffix("testexecutions"), build_payload(result, config, ids, set_id))
     exec_id = _new_id(execution)
 
-    # 5. start a log per seam and set its result
+    # 5. per seam: start a log, record the result + reason, then finish the log
     for cr in result.results:
+        tc = tc_ids[cr.contract.id]
         log = call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/start"),
-                   {"testCaseId": tc_ids[cr.contract.id], "runId": 1})
+                   {"testCaseId": tc, "runId": 1})
         log_id = _new_id(log)
         call("POST", config.suffix(f"testcaselogs/{log_id}/override-result"), _override_body(cr))
+        call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/finish"), _finish_body(cr, tc))
 
     # 6. finish the execution (no body)
     call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), None)
