@@ -9,13 +9,13 @@ tenant's live Swagger (`testmanager_/swagger/v2/swagger.json`).
 > `staging.uipath.com/hackathon26_1024` (the swagger responds). What's left is the
 > one thing only you can do — authenticate — plus pointing at a project.
 
-## What it does (per run)
+## What it does (per run, verified against the tenant)
 
-1. `POST testmanager_/api/v2/{projectId}/testcases` — one test case per seam (only if you don't supply existing ids)
-2. `POST .../testexecutions` — a `ThirdParty` execution named `SeamProof — <process> (GO|NO-GO)`
-3. `POST .../testcaselogs` — a log per seam, linked to the execution
-4. `POST .../testcaselogs/{id}/override-result` — sets each result `Passed`/`Failed`, with the seam's failure detail as the reason
-5. `POST .../testexecutions/{id}/finish`
+1. `POST .../testcases` — one test case per seam (unless you pass existing ids via `--testcase-map`)
+2. `POST .../testsets` + `POST .../testsets/{id}/assigntestcases` — a test set holding the seams (an execution must run a set)
+3. `POST .../testexecutions` — a `TestManager` execution over that set (`source: TestManager`; `ThirdParty` 500s for non-automated cases)
+4. per seam: `POST .../testcaselogs/testexecution/{id}/start` then `.../testcaselogs/{logId}/override-result` — `Passed`/`Failed` with the failure detail
+5. `POST .../testexecutions/{id}/finish` (no body)
 
 ## Step 1 — Authenticate (only you can do this)
 
@@ -93,8 +93,10 @@ Test Manager scopes:
 
 1. **Automation Cloud → Admin → External Applications → Add Application** →
    *Confidential application*.
-2. **Add scopes → Test Manager** → select the Test Manager API scopes (include the
-   **test execution / results** scopes, not just `TM.TestCases`). Save.
+2. **Add scopes → Test Manager** → select the Test Manager API scopes, including
+   **`TM.TestExecutions`** (the one the interactive `uipath auth` token lacks — it's
+   what gates the 403). The app's full set: `TM.Projects`, `TM.TestCases`,
+   `TM.TestSets`, `TM.Requirements`, `TM.TestExecutions`. Save.
 3. Copy the **App ID** (client id) and **App Secret**.
 4. Authenticate unattended (no browser):
 

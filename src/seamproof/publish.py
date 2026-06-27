@@ -45,7 +45,8 @@ RESULT_PASSED = "Passed"
 RESULT_FAILED = "Failed"
 
 # A transport makes one authenticated request and returns the parsed JSON body.
-Caller = Callable[[str, str, dict[str, Any]], dict[str, Any]]
+# The body may be a dict, a list (e.g. assign test cases), or None (no body).
+Caller = Callable[[str, str, Any], dict[str, Any]]
 
 
 @dataclass
@@ -121,14 +122,20 @@ def _testcase_body(config: PublishConfig, cr: ContractResult) -> dict[str, Any]:
     return body
 
 
-def build_payload(result: GateResult, config: PublishConfig, testcase_ids: list[str]) -> dict[str, Any]:
-    """The CreateTestExecutionRequest body (source = ThirdParty: SeamProof)."""
+def build_payload(
+    result: GateResult, config: PublishConfig, testcase_ids: list[str], testset_id: str
+) -> dict[str, Any]:
+    """The CreateTestExecutionRequest body.
+
+    Verified on the tenant: an execution must reference a test set *and* its test
+    cases, and ``source: TestManager`` (``ThirdParty`` 500s for non-automated test
+    cases, and ``sourceDetails`` is only accepted with ``ThirdParty``).
+    """
     return {
         "projectId": config.project_id,
+        "testSetId": testset_id,
         "testCaseIds": testcase_ids,
-        "testSetId": None,
-        "source": "ThirdParty",
-        "sourceDetails": f"SeamProof {__version__}",
+        "source": "TestManager",
         "name": config.test_set or f"SeamProof — {result.trace.process} ({result.decision.value})",
         "description": (
             f"Gate {result.decision.value} for trace {result.trace.trace_id}: "
@@ -153,17 +160,22 @@ def plan_requests(result: GateResult, config: PublishConfig) -> list[dict[str, A
             plan.append({"purpose": f"create test case {cr.contract.id}", "method": "POST",
                          "path": config.suffix("testcases"), "body": _testcase_body(config, cr)})
     ids = [config.testcase_ids.get(cr.contract.id, f"<{cr.contract.id}>") for cr in result.results]
+    plan.append({"purpose": "create test set", "method": "POST",
+                 "path": config.suffix("testsets"),
+                 "body": {"projectId": config.project_id, "name": config.test_set or "SeamProof seams"}})
+    plan.append({"purpose": "assign test cases", "method": "POST",
+                 "path": config.suffix("testsets/<set>/assigntestcases"), "body": ids})
     plan.append({"purpose": "create execution", "method": "POST",
-                 "path": config.suffix("testexecutions"), "body": build_payload(result, config, ids)})
+                 "path": config.suffix("testexecutions"), "body": build_payload(result, config, ids, "<set>")})
     for cr in result.results:
         tc = config.testcase_ids.get(cr.contract.id, f"<{cr.contract.id}>")
-        plan.append({"purpose": f"log {cr.contract.id}", "method": "POST",
-                     "path": config.suffix("testcaselogs"),
-                     "body": {"testCaseId": tc, "testExecutionId": "<exec>"}})
+        plan.append({"purpose": f"start log {cr.contract.id}", "method": "POST",
+                     "path": config.suffix("testcaselogs/testexecution/<exec>/start"),
+                     "body": {"testCaseId": tc, "runId": 1}})
         plan.append({"purpose": f"result {cr.contract.id} = {_result_for(cr)}", "method": "POST",
                      "path": config.suffix("testcaselogs/<log>/override-result"), "body": _override_body(cr)})
     plan.append({"purpose": "finish execution", "method": "POST",
-                 "path": config.suffix("testexecutions/<exec>/finish"), "body": {}})
+                 "path": config.suffix("testexecutions/<exec>/finish"), "body": None})
     return plan
 
 
@@ -187,7 +199,7 @@ def _sdk_caller(config: PublishConfig) -> Caller:
     # passed only for the result-URL display.
     client = UiPath(base_url=config.base_url, secret=config.token) if config.token else UiPath()
 
-    def call(method: str, suffix: str, body: dict[str, Any]) -> dict[str, Any]:
+    def call(method: str, suffix: str, body: Any = None) -> dict[str, Any]:
         response = client.api_client.request(method, suffix, scoped="tenant", json=body)
         text = getattr(response, "text", "") or ""
         return json.loads(text) if text.strip() else {}
@@ -201,10 +213,10 @@ def _rest_caller(config: PublishConfig) -> Caller:
             f"no access token; run `uipath auth`, set {ENV_TOKEN}, or use --dry-run"
         )
 
-    def call(method: str, suffix: str, body: dict[str, Any]) -> dict[str, Any]:
+    def call(method: str, suffix: str, body: Any = None) -> dict[str, Any]:
         url = f"{config.tenant_base}/{suffix}"
         request = urllib.request.Request(
-            url, data=json.dumps(body).encode(),
+            url, data=None if body is None else json.dumps(body).encode(),
             headers={
                 "Authorization": f"Bearer {config.token}",
                 "Content-Type": "application/json",
@@ -268,25 +280,35 @@ def publish(
                 "requests": plan_requests(result, config)}
 
     call = transport or _default_caller(config)
+    # 1. ensure a test case exists per seam
     tc_ids = dict(config.testcase_ids)
     for cr in result.results:
         if cr.contract.id not in tc_ids:
             tc_ids[cr.contract.id] = _new_id(call("POST", config.suffix("testcases"), _testcase_body(config, cr)))
+    ids = [tc_ids[cr.contract.id] for cr in result.results]
 
-    execution = call("POST", config.suffix("testexecutions"),
-                     build_payload(result, config, [tc_ids[cr.contract.id] for cr in result.results]))
+    # 2. a test set holding the seams, 3. assigned via a raw GUID array
+    test_set = call("POST", config.suffix("testsets"),
+                    {"projectId": config.project_id, "name": config.test_set or "SeamProof seams"})
+    set_id = _new_id(test_set)
+    call("POST", config.suffix(f"testsets/{set_id}/assigntestcases"), ids)
+
+    # 4. the execution over that set
+    execution = call("POST", config.suffix("testexecutions"), build_payload(result, config, ids, set_id))
     exec_id = _new_id(execution)
 
+    # 5. start a log per seam and set its result
     for cr in result.results:
-        log = call("POST", config.suffix("testcaselogs"),
-                   {"testCaseId": tc_ids[cr.contract.id], "testExecutionId": exec_id})
+        log = call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/start"),
+                   {"testCaseId": tc_ids[cr.contract.id], "runId": 1})
         log_id = _new_id(log)
         call("POST", config.suffix(f"testcaselogs/{log_id}/override-result"), _override_body(cr))
 
-    call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), {})
+    # 6. finish the execution (no body)
+    call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), None)
     url = None
     if config.base_url:
-        url = f"{config.tenant_base}/{config.service}/#/projects/{config.project_id}/test-executions/{exec_id}"
+        url = f"{config.tenant_base}/{config.service}/#/projects/{config.project_id}/executions/{exec_id}"
     return {
         "published": True,
         "project_id": config.project_id,

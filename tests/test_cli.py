@@ -75,4 +75,4 @@ def test_publish_dry_run_prints_plan(capsys):
     out = capsys.readouterr().out
     assert "dry run" in out.lower()
     assert "testexecutions" in out      # the v2 endpoint appears in the plan
-    assert "ThirdParty" in out          # the execution source
+    assert "TestManager" in out         # the execution source

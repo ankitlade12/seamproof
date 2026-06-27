@@ -26,10 +26,11 @@ def _result(trace_name):
     return evaluate_gate(trace, contracts)
 
 
-def test_execution_payload_is_thirdparty_source():
+def test_execution_payload_uses_testmanager_source():
     result = _result("seam1_amount_mismatch.json")
-    body = build_payload(result, PublishConfig(project_id="P1"), ["t1", "t2", "t3"])
-    assert body["source"] == "ThirdParty"
+    body = build_payload(result, PublishConfig(project_id="P1"), ["t1", "t2", "t3"], "set-1")
+    assert body["source"] == "TestManager"        # ThirdParty 500s for non-automated cases
+    assert body["testSetId"] == "set-1"
     assert body["testCaseIds"] == ["t1", "t2", "t3"]
     assert "NO-GO" in body["name"]
 
@@ -77,10 +78,11 @@ def test_publish_runs_full_flow_with_existing_testcases():
                            tenant="t", project_id="P1", testcase_ids=IDS)
     out = publish(result, config, transport=fake)
     assert out["published"] is True
-    # 1 execution + (3 logs + 3 overrides) + 1 finish = 8 calls (test cases pre-exist)
-    assert len(calls) == 8
+    # testset + assign + execution + (3 start-logs + 3 results) + finish = 10 (cases pre-exist)
+    assert len(calls) == 10
     assert all(m == "POST" for m, _ in calls)
     assert any("api/v2/P1/testexecutions" in s for _, s in calls)
+    assert any("testsets" in s for _, s in calls)
 
 
 def test_publish_auto_creates_testcases_with_container():
@@ -96,9 +98,9 @@ def test_publish_auto_creates_testcases_with_container():
     config = PublishConfig(base_url="https://staging.uipath.com", organization="o",
                            tenant="t", project_id="P1", container_id="C1")
     publish(result, config, transport=fake)
-    # 3 test cases auto-created + 1 execution + 6 + 1 finish = 11 calls
-    assert len(calls) == 11
-    assert sum("testcases" in s for s in calls) == 3
+    # 3 test cases + testset + assign + execution + 6 (start/result) + finish = 13 calls
+    assert len(calls) == 13
+    assert sum(s.endswith("/testcases") for s in calls) == 3
 
 
 def test_publish_requires_project():
@@ -116,7 +118,7 @@ def test_publish_auto_creates_without_container():
         return {"id": f"id-{len(calls)}"}
 
     publish(result, PublishConfig(base_url="https://x", project_id="P1"), transport=fake)
-    assert sum("testcases" in s for s in calls) == 3  # auto-created, no container required
+    assert sum(s.endswith("/testcases") for s in calls) == 3  # auto-created, no container required
 
 
 def test_tenant_base_respects_full_url():

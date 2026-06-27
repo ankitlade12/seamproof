@@ -32,11 +32,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The posting robot does a **real HTTP POST** to an ERP endpoint when `erp_url` is
   set; CI now surfaces the gate verdict in the run summary and uploads a JUnit
   artifact (the release gate, visible in CI).
-- Rewrote the Test Manager publisher to the real **v2** API (create test cases →
-  `ThirdParty` execution → per-seam logs → `override-result` Passed/Failed →
-  finish), verified against a live tenant's Swagger. The SDK transport now uses the
+- Rewrote the Test Manager publisher to the real **v2** flow, **verified end to end
+  against the tenant**: create test cases → a test set (`assigntestcases` via a raw
+  GUID array) → a `TestManager` execution over the set → per-seam log
+  `start` + `override-result` (Passed/Failed) → `finish`. (`ThirdParty` 500s for
+  non-automated cases; the execution needs a test set.) The SDK transport uses the
   `uipath auth` session; `--dry-run` prints the full request plan. New flags:
-  `--org`, `--tenant`, `--container`, `--testcase-map`. Runbook:
+  `--org`, `--tenant`, `--container`, `--testcase-map`. Posting results needs the
+  `TM.TestExecutions` scope (an External Application — see the runbook). Runbook:
   `docs/publish-to-test-manager.md`.
 
 ## [0.2.0] - 2026-06-25
