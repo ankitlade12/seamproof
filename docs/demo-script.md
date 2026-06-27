@@ -5,6 +5,9 @@ entirely on commands that work today (the coded automation runs on the UiPath ru
 the gate runs offline). Total is budgeted to **5:00 exactly** — the hackathon hard cap.
 Record a clean take of each command in advance as backup.
 
+> **Recording it?** See [demo-recording-kit.md](demo-recording-kit.md) — a verified,
+> offline-first runbook (TYPE → SCREEN → SAY per beat) so nothing breaks on camera.
+
 **Prep:** run `uipath auth` and export `UIPATH_URL` + `UIPATH_ACCESS_TOKEN` so
 `--recommend` runs on the **LLM Gateway** (offline it falls back to a deterministic
 heuristic of identical shape, so the take looks the same either way).
