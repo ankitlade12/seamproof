@@ -25,7 +25,10 @@ actors**:
   cost-per-run or breaches the cycle-time SLO.
 
 Isolated agent evals and unit tests never see these. They live in the connective
-tissue.
+tissue. Concretely: in our reference case the agent reconciles an invoice to **$5,400**
+when the line items sum to **$4,200** — a **$1,200 overpayment** in valid JSON that
+posts to the ERP in under two seconds, no human in the loop. SeamProof blocks it at the
+release gate.
 
 ## What it does
 
@@ -43,10 +46,10 @@ Gateway** (AI Trust Layer) — reads each failed seam and returns a **root cause
 3's asks: it **validates** the AI-infused workflow, **recommends fixes**, **identifies
 fragile** seams, and treats seam contracts as executable **requirements**.
 
-The seam-contract model is **general** (it applies to any agent → robot → human
-process); the invoice-exception process is one reference implementation. And it is
-structurally UiPath-only: no other platform has real robots and Action Center human
-tasks as first-class actors in one orchestrated process.
+The seam-contract model **generalises** to any agent → robot → human process; the
+invoice-exception process is one reference implementation. And it fits UiPath
+uniquely well: real robots and Action Center human tasks are first-class actors in one
+orchestrated process — the exact shape SeamProof tests.
 
 ## How we built it
 
@@ -81,12 +84,13 @@ Gateway) · UiPath for Coding Agents.
 
 ## Coding agents vs. low-code agents (required clarification)
 
-Both, deliberately. The **system under test** can be built with **low-code** UiPath
-tooling (Agent Builder agent, Studio robot, Action Center human) orchestrated by
-Maestro — and is also shipped as a **coded** automation built with the `uipath`
-Python SDK. **SeamProof itself — the tester** — is authored with a **coding agent**
-(Claude Code). In short: low-code/coded agents *do the work*; the coding agent
-*writes the tests that guard the seams between them*.
+Both, deliberately. The **system under test** ships as a real, runnable **coded**
+automation (`uipath` Python SDK, runs via `uipath run`), plus **paste-ready low-code
+artifacts** (an Agent Builder agent spec + schemas in `sut/agent/`) to build the same
+process in Maestro. **SeamProof itself — the tester** — is authored with a **coding
+agent** (Claude Code) through *UiPath for Coding Agents*. In short: low-code/coded
+agents *do the work*; the coding agent *writes the tests that guard the seams between
+them*.
 
 ## Challenges
 
@@ -97,12 +101,13 @@ Python SDK. **SeamProof itself — the tester** — is authored with a **coding 
 
 ## Accomplishments
 
-- A working, tested engine (66 tests) that gates real UiPath runs and catches all
-  three seam failures.
+- A working, tested engine (74 passing tests, CI green on every push) that gates real
+  UiPath runs and catches all three seam failures.
 - A genuine UiPath coded automation that runs via `uipath run`, with `@traced`,
   LLM Gateway, Action Center, `uipath eval`, and an external LangChain agent.
 - The gate's seams created as managed test cases in a real Test Manager project, with
-  a **Finished** execution carrying the per-seam Passed/Failed results.
+  a **Finished** execution carrying the per-seam Passed/Failed results — captured back
+  from the API in [`evidence/test-manager-evidence.md`](evidence/test-manager-evidence.md).
 - A **Seam Analyst** agent that turns a red gate into an actionable root-cause + fix,
   on the LLM Gateway, with the recommendation recorded on the Test Manager result.
 
@@ -119,5 +124,6 @@ opentelemetry · langchain · claude-code
 ## Links
 
 - **Repo:** https://github.com/ankitlade12/seamproof
-- **Demo video:** _(add link)_
-- **Presentation:** _(add link)_
+- **Test Manager evidence:** [docs/evidence/test-manager-evidence.md](https://github.com/ankitlade12/seamproof/blob/main/docs/evidence/test-manager-evidence.md)
+- **Demo video:** _(add link — record before submitting)_
+- **Presentation:** _(add link — fill the provided template, share "access to all")_

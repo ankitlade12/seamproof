@@ -39,14 +39,21 @@ the seams between actors**:
 Isolated agent evals and unit tests never see these. They live in the connective
 tissue.
 
+Concretely, in the bundled case the agent reconciles an invoice to **$5,400** when the
+line items sum to **$4,200** — a **$1,200 overpayment** in structurally valid JSON. It
+clears schema validation and the robot posts it to the ERP in under two seconds with no
+human in the loop. One wrong handoff, one silent loss. SeamProof blocks it at the
+release gate, before it ships.
+
 ## What SeamProof does
 
 The blocker to putting agents in production isn't the model — it's **governing what
 happens when an agent, a robot, and a human hand off to each other**. SeamProof
 treats every handoff as a **contract** and tests it against the real run trace. It
 asserts trace-level properties at each agent → robot → human boundary and emits a
-**go/no-go release gate** with the evidence: the missing QA layer for *composite*
-agentic processes — not the agent, not the app, but the seams between them.
+**go/no-go release gate** with the evidence: the QA layer for *composite* agentic
+processes that agent evals and unit tests skip — not the agent, not the app, but the
+seams between them.
 
 The seam-contract model is **general** — it applies to any agent → robot → human
 process; the bundled invoice-exception process is one reference implementation. Point
@@ -204,10 +211,21 @@ SeamProof falls back to a stdlib REST call using `UIPATH_URL` +
 `--dry-run` and the bundled OTLP fixture. Full runbook:
 [docs/publish-to-test-manager.md](docs/publish-to-test-manager.md).
 
+> **Proof it ran on the tenant — not a dry run.** `seamproof publish` posted a real
+> execution to a live **Test Manager** project, which finished with the per-seam results
+> — **seam-1 Failed, seam-2/3 Passed, status Finished (2 passed · 1 failed)**. The
+> result, fetched straight back from the Test Manager v2 API, is committed at
+> **[docs/evidence/test-manager-evidence.md](docs/evidence/test-manager-evidence.md)**
+> (raw API JSON alongside it), and CI is green on every push.
+
+> Which parts need a tenant? `check` and `ingest` over the bundled fixture run **fully
+> offline** (that's `make demo`). `seamproof publish` and `uipath run` are the
+> **tenant-live** steps — the proof above is the captured result of running them.
+
 Need a real trace to feed it? The system under test ships as a runnable **UiPath
 coded automation** in [`sut/automation/`](sut/automation/) — `uipath run process
 '{"case": "seam1_corruption"}'` executes it on the UiPath runtime (steps traced
-with `@traced`, recon via the UiPath LLM Gateway) and emits exactly this OTLP.
+with `@traced`, recon via the UiPath LLM Gateway) and emits the OTLP SeamProof gates.
 
 ## UiPath components used
 
@@ -325,7 +343,8 @@ It maps to all four of Track 3's asks for testing agents:
   against the real run trace and emits go/no-go.
 - **Recommend fixes** — the **Seam Analyst** (LLM Gateway agent) returns a root cause
   and a concrete remediation for every failed seam.
-- **Identify fragile tests** — the Seam Analyst rates each failing seam's fragility.
+- **Surface the fragile seams** — the Seam Analyst rates how likely each failing handoff
+  is to recur, so you know which seams to harden first.
 - **Evaluate requirements** — seam contracts *are* the executable requirements for a
   handoff; the analyst reasons about which one broke and why.
 

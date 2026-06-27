@@ -16,9 +16,9 @@ Production incidents come from the **seams between them**.
 
 ## 3 · The insight
 **Test the seams, not just the actors.** A handoff is a *contract*; assert it
-against the real run trace and gate the release. It's the missing QA layer for
-*composite* agentic processes — and it's structurally UiPath-only (real robots +
-Action Center humans as first-class actors).
+against the real run trace and gate the release. It's the QA layer for *composite*
+agentic processes that agent evals and unit tests skip — and it fits UiPath uniquely
+well (real robots + Action Center humans as first-class actors in one orchestrated flow).
 
 ## 4 · Architecture
 Use **`docs/img/architecture.png`** — `[Agent] → [Router] → [Human] → [Robot]`
@@ -35,20 +35,25 @@ Use **`docs/img/seams.png`**.
 | seam-2 | routing→human | skipped approval (blocking) |
 | seam-3 | process→finops | cost/cycle SLO drift (advisory) |
 
-## 6 · Live demo — Seam 1 (the money shot)
+## 6 · Live demo — Seam 1 (the money shot) + the agent's fix
 `uipath run process seam1_corruption` → `seamproof check` →
 **GATE: NO-GO — expected 5400 == 4200, differs by 1200.**
 > Valid JSON, wrong business outcome. The robot would post $5,400.
+
+Then `seamproof check --recommend` → the **Seam Analyst** (an agent on the UiPath LLM
+Gateway) returns the **root cause + concrete fix + fragility rating**. The tester is
+itself an agent — Track 3's "agent that recommends fixes."
+> It doesn't just *find* the broken seam; it tells you how to close it.
 
 ## 7 · Live demo — Seam 2 + the gate in Test Manager
 $9,950 auto-posts around the human → NO-GO (seam-2). Show the **SeamProof** project
 in Test Manager with the three seam test cases; the gate publishes Passed/Failed.
 
 ## 8 · Deep UiPath usage
-Coded automation (`uipath run`, `@traced`) · **UiPath LLM Gateway** recon ·
-**Action Center** human task · **`uipath eval`** (agent quality = 1.0) ·
-**OpenTelemetry** ingest · **Test Manager** v2 publish · external **LangChain**
-agent on the UiPath Gateway (`uipath-langchain`).
+Coded automation (`uipath run`, `@traced`) · **UiPath LLM Gateway** (recon agent **+
+the Seam Analyst**) · **Action Center** human task · **`uipath eval`** (agent quality
+= 1.0) · **OpenTelemetry** ingest · **Test Manager** v2 publish (real Finished
+execution) · external **LangChain** agent on the UiPath Gateway (`uipath-langchain`).
 
 ## 9 · Built with a coding agent
 Seam contracts, adversarial scenarios, and the reporter authored with **Claude Code**
