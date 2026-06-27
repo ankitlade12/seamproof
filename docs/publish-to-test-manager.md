@@ -1,9 +1,10 @@
 # Publishing the gate result to UiPath Test Manager
 
 `seamproof publish` posts the gate result into **UiPath Test Manager** as a
-`ThirdParty` test execution with one Passed/Failed test-case log per seam. The
-endpoints and payloads are the real Test Manager **v2** API, verified against the
-tenant's live Swagger (`testmanager_/swagger/v2/swagger.json`).
+`TestManager` test execution over a test set, with one Passed/Failed test-case log
+per seam. The endpoints and payloads are the real Test Manager **v2** API, and the
+whole flow is **verified end to end against the tenant** — see the captured live
+result in [`evidence/test-manager-evidence.md`](evidence/test-manager-evidence.md).
 
 > Status for the hackathon tenant: Test Manager **is enabled** on
 > `staging.uipath.com/hackathon26_1024` (the swagger responds). What's left is the
