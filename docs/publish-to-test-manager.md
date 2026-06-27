@@ -18,6 +18,11 @@ result in [`evidence/test-manager-evidence.md`](evidence/test-manager-evidence.m
 4. per seam: `POST .../testcaselogs/testexecution/{id}/start` → `.../testcaselogs/{logId}/override-result` (`Passed`/`Failed` + reason) → `.../testcaselogs/testexecution/{id}/finish` (ends the log — without this the execution stays stuck on **Running** instead of reaching a terminal **Finished** status)
 5. `POST .../testexecutions/{id}/finish` (no body)
 
+With `--recommend`, the **Seam Analyst** runs first and its root-cause + fix print with
+the gate report. (The fix is shown in the report rather than the Test Manager per-log
+reason: in the current preview API, finishing a log supersedes its override reason — so
+the report / `check --recommend` is the canonical place the recommendation appears.)
+
 ## Step 1 — Authenticate (only you can do this)
 
 From any UiPath project dir (e.g. `sut/automation/`):

@@ -125,6 +125,21 @@ def test_publish_recommendation_enriches_seam_reason():
     assert all("Seam Analyst" not in b["reason"] for b in passed)  # only failures get a fix
 
 
+def test_publish_tolerates_already_finished_execution():
+    # The per-seam finishes already move the execution to a terminal status, so the
+    # execution-level finish can report "already started" — publish must not fail on it.
+    result = _result("seam1_amount_mismatch.json")
+
+    def fake(method, suffix, body=None):
+        if "/testexecutions/" in suffix and suffix.endswith("/finish"):
+            raise SeamProofError("Test Manager POST … -> HTTP 400: TestExecution has already started.")
+        return {"id": "x"}
+
+    config = PublishConfig(base_url="https://x", project_id="P1", testcase_ids=IDS)
+    out = publish(result, config, transport=fake)   # must not raise
+    assert out["published"] is True
+
+
 def test_publish_requires_project():
     result = _result("golden_happy_path.json")
     with pytest.raises(SeamProofError):

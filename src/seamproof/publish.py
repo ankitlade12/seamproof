@@ -327,8 +327,13 @@ def publish(
              _override_body(cr, recs.get(cr.contract.id)))
         call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/finish"), _finish_body(cr, tc))
 
-    # 6. finish the execution (no body)
-    call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), None)
+    # 6. finish the execution. The per-seam finishes above already move it to a terminal
+    # status, so this can report "already started" — that's benign, so tolerate it.
+    try:
+        call("POST", config.suffix(f"testexecutions/{exec_id}/finish"), None)
+    except SeamProofError as exc:
+        if "already" not in str(exc).lower():
+            raise
     url = None
     if config.base_url:
         url = f"{config.tenant_base}/{config.service}/#/projects/{config.project_id}/executions/{exec_id}"

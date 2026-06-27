@@ -7,8 +7,8 @@ next to this file: [`test-manager-result.json`](test-manager-result.json).
 
 - **Tenant:** `staging.uipath.com/hackathon26_1024/DefaultTenant`
 - **Project:** SeamProof — `ccf142e8-a2e0-0000-d884-0b49d0877f68`
-- **Execution:** `23b437f1-5e13-0c00-f010-0b49d10264cd`
-- **Open in UI:** [test-executions/23b437f1…](https://staging.uipath.com/hackathon26_1024/DefaultTenant/testmanager_/#/projects/ccf142e8-a2e0-0000-d884-0b49d0877f68/executions/23b437f1-5e13-0c00-f010-0b49d10264cd)
+- **Execution:** `140a2ed2-af13-0c00-957d-0b49d1761ea2`
+- **Open in UI:** [executions/140a2ed2…](https://staging.uipath.com/hackathon26_1024/DefaultTenant/testmanager_/#/projects/ccf142e8-a2e0-0000-d884-0b49d0877f68/executions/140a2ed2-af13-0c00-957d-0b49d1761ea2)
 
 ## Execution
 
@@ -17,8 +17,8 @@ next to this file: [`test-manager-result.json`](test-manager-result.json).
 | Name | **SeamProof — invoice-exception-handling (NO-GO)** |
 | Description | Gate NO-GO for trace `sut-seam1-001`: 6/7 checks passed |
 | Source | `TestManager` |
-| Test set | `5726c56c-d65f-0300-4690-0b49d1026440` (`SEAM:13`) |
-| Started / finished | `2026-06-27T00:17:09Z` → `2026-06-27T00:17:14Z` |
+| Test set | `4665533d-e15f-0300-9213-0b49d1761dd7` (`SEAM:14`) |
+| Started / finished | `2026-06-27T14:05:34Z` → `2026-06-27T14:05:41Z` |
 | Status | **Finished** |
 | **Result** | **passed 2 · failed 1** |
 
@@ -44,8 +44,8 @@ python sut/automation/main.py seam1_corruption run.otlp.json
 seamproof publish -c contracts --otel run.otlp.json \
   --base-url https://staging.uipath.com/hackathon26_1024/DefaultTenant \
   --token "$APP_TOKEN" --project ccf142e8-a2e0-0000-d884-0b49d0877f68 \
-  --testcase-map "seam-1=e1fb93a3…,seam-2=ba906c4c…,seam-3=3bbd1ef8…"
-# -> Published to Test Manager — execution 23b437f1… (gate NO-GO)
+  --testcase-map "seam-1=e1fb93a3…,seam-2=ba906c4c…,seam-3=3bbd1ef8…" --recommend
+# -> Published to Test Manager — execution 140a2ed2… (gate NO-GO)
 ```
 
 `$APP_TOKEN` is a client-credentials token from an **External Application** with the
@@ -57,8 +57,12 @@ seamproof publish -c contracts --otel run.otlp.json \
   result is set — that's what moves the execution to a terminal **`Finished`** status
   rather than leaving it on "Running". (Gotcha: `override-result` alone records the
   result but never ends the log, so the execution would otherwise stay "Running".)
-- Viewing this in the Test Manager **UI** requires a Test Manager (Testing) **named-user
-  license** on the tenant; the hackathon staging tenant's pool doesn't include one, so
-  the UI shows an `unauthorized?hasRequiredLicense` page for the user even with the
-  Tenant Administrator role. The integration itself is unaffected — the API wrote and
-  read these results with the External Application's credentials.
+- The user views this with **Tenant Administrator** access; full Test Manager *write*
+  features need a Test Manager (Testing) **named-user license** the hackathon staging
+  tenant doesn't include, so the UI runs in limited (view) mode. That's fine — SeamProof
+  does all the writing via the API with the External Application's credentials; the UI
+  is only for viewing the result.
+- With `--recommend`, the **Seam Analyst**'s root-cause + fix print with the gate report
+  at publish time. In this preview API a finished log supersedes its per-log reason, so
+  the recommendation lives in the report / `check --recommend` rather than the Test
+  Manager reason field.
