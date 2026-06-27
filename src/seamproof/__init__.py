@@ -9,6 +9,7 @@ gate with the evidence.
 from __future__ import annotations
 
 from ._version import __version__
+from .analyst import Recommendation, analyze, recommend
 from .contracts import Boundary, Contract, load_contract, load_contracts
 from .evaluators import AssertionResult, ContractResult, evaluate_contract
 from .gate import Decision, GateResult, evaluate_gate
@@ -28,6 +29,9 @@ __all__ = [
     "Decision",
     "GateResult",
     "evaluate_gate",
+    "Recommendation",
+    "analyze",
+    "recommend",
     "otel_to_trace",
     "trace_from_otel",
     "PublishConfig",

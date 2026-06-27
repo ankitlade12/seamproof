@@ -49,7 +49,8 @@ asserts trace-level properties at each agent → robot → human boundary and em
 agentic processes — not the agent, not the app, but the seams between them.
 
 The seam-contract model is **general** — it applies to any agent → robot → human
-process; the bundled invoice-exception process is one reference implementation.
+process; the bundled invoice-exception process is one reference implementation. Point
+it at your own process in three steps: [docs/adopt-seamproof.md](docs/adopt-seamproof.md).
 Because it works from the exported run trace, the gate runs **offline** and in CI —
 no live cloud call needed to prove a seam broke.
 
@@ -78,6 +79,28 @@ GATE: NO-GO  —  release blocked by seam-1
        6/7 assertions passed
 ```
 
+### The Seam Analyst — the agent that recommends the fix
+
+A gate that only says *no* leaves you to do the diagnosis. Add `--recommend` and the
+**Seam Analyst** reads each failed seam and returns a **root cause**, a **concrete
+fix**, and a **fragility** rating. It runs as an agent on the UiPath **LLM Gateway**
+(the same AI Trust Layer the system under test uses) when credentials are present, and
+falls back to a deterministic heuristic offline:
+
+```text
+Seam Analyst — recommendations  (llm-gateway)
+  seam-1 · recon-agent -> posting-robot  [fragility: high]
+      root cause: The value handed from recon-agent to posting-robot disagrees with its
+      source of truth (5400 vs 4200) — the upstream actor likely computed it wrong.
+      fix: Recompute the total from the source before the robot posts it, or add a
+      reconciliation post-condition that blocks the handoff on mismatch.
+```
+
+So SeamProof doesn't just *find* the broken seam — it tells you how to close it. The
+deterministic gate stays the source of truth for go/no-go; the agent adds the remedy,
+and (with `publish --recommend`) that fix is written onto the seam's **Test Manager**
+result.
+
 ## Quickstart
 
 ```bash
@@ -89,6 +112,9 @@ seamproof check -c contracts -t examples/traces/golden_happy_path.json
 
 # Gate an injected agent→robot corruption — exits 1 (NO-GO)
 seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json
+
+# …and have the Seam Analyst agent recommend the root cause + fix
+seamproof check -c contracts -t examples/traces/seam1_amount_mismatch.json --recommend
 ```
 
 `seamproof check` exits **non-zero when a blocking seam fails** — that exit code
@@ -193,6 +219,7 @@ layer:
 | --- | --- |
 | **UiPath Maestro** | Orchestrates the agent → router → human → robot process and emits the run trace (over OpenTelemetry) that SeamProof ingests. |
 | **UiPath Agent Builder** | The recon agent that reconciles the invoice (swappable for an external LangChain agent). |
+| **UiPath LLM Gateway (AI Trust Layer)** | Runs the **Seam Analyst** — the agent that reads a failed seam and returns a root-cause + recommended fix + fragility rating (`check --recommend`) — and powers the recon agent in the SUT. |
 | **UiPath Action Center** | The human approval task at the routing → human seam. |
 | **UiPath Studio / RPA** | The robot that posts approved invoices to the ERP. |
 | **UiPath OpenTelemetry export** | Maestro's OTLP agent traces are SeamProof's input — ingested via `seamproof ingest` / `check --otel`. |
@@ -291,6 +318,16 @@ Built for **UiPath AgentHack 2026 — Track 3 (UiPath Test Cloud)**. SeamProof
 reimagines testing for AI-driven enterprise processes: instead of evaluating each
 agent in isolation, it tests the seams where agents, robots, and humans hand off —
 the boundaries where production actually breaks.
+
+It maps to all four of Track 3's asks for testing agents:
+
+- **Validate AI-infused workflows** — the gate asserts the agent → robot → human seams
+  against the real run trace and emits go/no-go.
+- **Recommend fixes** — the **Seam Analyst** (LLM Gateway agent) returns a root cause
+  and a concrete remediation for every failed seam.
+- **Identify fragile tests** — the Seam Analyst rates each failing seam's fragility.
+- **Evaluate requirements** — seam contracts *are* the executable requirements for a
+  handoff; the analyst reasons about which one broke and why.
 
 ## License
 

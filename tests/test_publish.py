@@ -106,6 +106,25 @@ def test_publish_auto_creates_testcases_with_container():
     assert sum(s.endswith("/testcases") for s in calls) == 3
 
 
+def test_publish_recommendation_enriches_seam_reason():
+    from seamproof.analyst import analyze
+    result = _result("seam1_amount_mismatch.json")
+    recs = {r.seam_id: r for r in analyze(result, use_llm=False)}
+    bodies = []
+
+    def fake(method, suffix, body=None):
+        bodies.append((suffix, body))
+        return {"id": "x"}
+
+    config = PublishConfig(base_url="https://x", project_id="P1", testcase_ids=IDS)
+    publish(result, config, transport=fake, recommendations=recs)
+    overrides = [b for s, b in bodies if "override-result" in s and isinstance(b, dict)]
+    failed = [b for b in overrides if b["currentResult"] == "Failed"]
+    assert failed and "Seam Analyst" in failed[0]["reason"]   # the fix rides along to Test Manager
+    passed = [b for b in overrides if b["currentResult"] == "Passed"]
+    assert all("Seam Analyst" not in b["reason"] for b in passed)  # only failures get a fix
+
+
 def test_publish_requires_project():
     result = _result("golden_happy_path.json")
     with pytest.raises(SeamProofError):

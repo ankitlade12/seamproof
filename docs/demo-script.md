@@ -47,7 +47,18 @@ seamproof check -c ../../contracts --otel seam1_corruption.otlp.json
 > SeamProof asserts `amount == sum(line_items)` at the agent→robot seam:
 > **expected 5400 == 4200, differs by 1200. GATE: NO-GO, blocked by seam-1.**"
 
-Let the red NO-GO sit on screen — this is the money shot.
+Let the red NO-GO sit on screen — this is the money shot. Then have the agent fix it:
+
+```bash
+seamproof check -c ../../contracts --otel seam1_corruption.otlp.json --recommend
+```
+
+> "And the gate doesn't stop at *no*. `--recommend` runs the **Seam Analyst** — an
+> agent on the UiPath LLM Gateway — which reads the failed seam and hands back a **root
+> cause** and a **concrete fix**: *recompute the total from the source before the robot
+> posts, or add a reconciliation post-condition.* It even rates the seam **high
+> fragility.** So the tester is itself an agent — it finds the break *and* tells you how
+> to close it."
 
 ## 2:35 – 3:25 · Break Seam 2 (skipped checkpoint)
 
@@ -83,11 +94,13 @@ Show the **SeamProof** project in Test Manager with the three seam test cases
 
 ```bash
 seamproof publish -c ../../contracts --otel seam1_corruption.otlp.json \
-  --base-url $UIPATH_URL --project <PROJECT_ID>      # posts the gate result
+  --base-url $UIPATH_URL --project <PROJECT_ID> --recommend   # posts the gate result + fix
 ```
 
 > "The seams live in Test Manager as managed test cases; the gate publishes
-> Passed/Failed per seam. A change that breaks a seam blocks the release."
+> Passed/Failed per seam — a **Finished** execution, seam-1 the failure. With
+> `--recommend` the Seam Analyst's fix is written right onto the seam-1 result. A
+> change that breaks a seam blocks the release."
 
 ## 4:45 – 5:00 · Close
 

@@ -144,8 +144,11 @@ def build_payload(
     }
 
 
-def _override_body(cr: ContractResult) -> dict[str, Any]:
-    return {"currentResult": _result_for(cr), "reason": _reason_for(cr)}
+def _override_body(cr: ContractResult, recommendation: Any = None) -> dict[str, Any]:
+    reason = _reason_for(cr)
+    if recommendation is not None:
+        reason = f"{reason}  ▸ Seam Analyst: {recommendation.recommended_fix}"
+    return {"currentResult": _result_for(cr), "reason": reason}
 
 
 def _finish_body(cr: ContractResult, testcase_id: str) -> dict[str, Any]:
@@ -281,10 +284,16 @@ def publish(
     *,
     dry_run: bool = False,
     transport: Caller | None = None,
+    recommendations: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Create the execution, log + set each seam's result, and finish it."""
+    """Create the execution, log + set each seam's result, and finish it.
+
+    ``recommendations`` optionally maps a seam id to the Seam Analyst's recommendation;
+    when present, its fix is appended to that seam's result reason in Test Manager.
+    """
     if not config.project_id:
         raise SeamProofError("a Test Manager project id is required (--project or UIPATH_PROJECT_ID)")
+    recs = recommendations or {}
 
     if dry_run:
         return {"dry_run": True, "base": f"{config.tenant_base}/{config.service}",
@@ -314,7 +323,8 @@ def publish(
         log = call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/start"),
                    {"testCaseId": tc, "runId": 1})
         log_id = _new_id(log)
-        call("POST", config.suffix(f"testcaselogs/{log_id}/override-result"), _override_body(cr))
+        call("POST", config.suffix(f"testcaselogs/{log_id}/override-result"),
+             _override_body(cr, recs.get(cr.contract.id)))
         call("POST", config.suffix(f"testcaselogs/testexecution/{exec_id}/finish"), _finish_body(cr, tc))
 
     # 6. finish the execution (no body)

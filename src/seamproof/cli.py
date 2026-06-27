@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from ._version import __version__
+from .analyst import analyze
 from .contracts import load_contracts
 from .errors import SeamProofError
 from .gate import evaluate_gate
@@ -59,6 +60,11 @@ def _build_parser() -> argparse.ArgumentParser:
     check.add_argument("-f", "--format", default="text", choices=_FORMATS, help="report format")
     check.add_argument("-o", "--out", default=None, help="write the report to a file")
     check.add_argument("--no-fail", action="store_true", help="always exit 0, even on NO-GO")
+    check.add_argument(
+        "--recommend", action="store_true",
+        help="run the Seam Analyst agent on failures (root cause + fix); uses the UiPath "
+             "LLM Gateway when credentials are present, else a deterministic heuristic",
+    )
     check.set_defaults(func=_cmd_check)
 
     # -- ingest -------------------------------------------------------------
@@ -83,6 +89,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="existing Test Manager test case ids, e.g. 'seam-1=ID1,seam-2=ID2,seam-3=ID3'",
     )
     pub.add_argument("--test-set", default=None, help="name for the Test Manager execution")
+    pub.add_argument(
+        "--recommend", action="store_true",
+        help="attach the Seam Analyst's recommended fix to each failed seam's Test Manager result",
+    )
     pub.add_argument("--dry-run", action="store_true", help="print the full request plan without sending")
     pub.set_defaults(func=_cmd_publish)
     return parser
@@ -93,10 +103,11 @@ def _cmd_check(args: argparse.Namespace) -> int:
     trace = _resolve_trace(args)
     result = evaluate_gate(trace, contracts)
 
-    report = render(result, args.format)
+    recs = analyze(result) if getattr(args, "recommend", False) else None
+    report = render(result, args.format, recommendations=recs)
     if args.out:
         Path(args.out).write_text(report + ("" if report.endswith("\n") else "\n"))
-        print(render(result, "text"))
+        print(render(result, "text", recommendations=recs))
         print(f"\nReport written to {args.out}")
     else:
         print(report)
@@ -151,9 +162,11 @@ def _cmd_publish(args: argparse.Namespace) -> int:
         testcase_ids=_parse_testcase_map(args.testcase_map) or None,
         test_set=args.test_set,
     )
-    outcome = publish(result, config, dry_run=args.dry_run)
+    recs = analyze(result) if getattr(args, "recommend", False) else None
+    rec_map = {r.seam_id: r for r in recs} if recs else None
+    outcome = publish(result, config, dry_run=args.dry_run, recommendations=rec_map)
 
-    print(render(result, "text"))
+    print(render(result, "text", recommendations=recs))
     print()
     if outcome.get("dry_run"):
         print(f"[dry run] {len(outcome['requests'])} requests under {outcome['base']}:")

@@ -13,11 +13,15 @@ from __future__ import annotations
 import json
 import os
 import sys
+from typing import TYPE_CHECKING
 from xml.dom import minidom
 from xml.etree import ElementTree as ET
 
 from .evaluators import ContractResult
 from .gate import GateResult
+
+if TYPE_CHECKING:
+    from .analyst import Recommendation
 
 _PASS = "PASS"
 _FAIL = "FAIL"
@@ -54,13 +58,19 @@ def _color_enabled(stream) -> bool:
     return hasattr(stream, "isatty") and stream.isatty()
 
 
-def render(result: GateResult, fmt: str = "text", *, color: bool | None = None) -> str:
+def render(
+    result: GateResult,
+    fmt: str = "text",
+    *,
+    color: bool | None = None,
+    recommendations: list[Recommendation] | None = None,
+) -> str:
     if fmt == "text":
-        return render_text(result, color=color)
+        return render_text(result, color=color, recommendations=recommendations)
     if fmt == "markdown":
-        return render_markdown(result)
+        return render_markdown(result, recommendations=recommendations)
     if fmt == "json":
-        return render_json(result)
+        return render_json(result, recommendations=recommendations)
     if fmt == "junit":
         return render_junit(result)
     raise ValueError(f"unknown report format: {fmt!r}")
@@ -70,7 +80,10 @@ def render(result: GateResult, fmt: str = "text", *, color: bool | None = None) 
 # text
 # --------------------------------------------------------------------------- #
 
-def render_text(result: GateResult, *, color: bool | None = None) -> str:
+def render_text(
+    result: GateResult, *, color: bool | None = None,
+    recommendations: list[Recommendation] | None = None,
+) -> str:
     enabled = _color_enabled(sys.stdout) if color is None else color
     s = _Style(enabled)
     lines: list[str] = []
@@ -105,6 +118,15 @@ def render_text(result: GateResult, *, color: bool | None = None) -> str:
     if result.advisory_failures:
         seams = ", ".join(cr.contract.id for cr in result.advisory_failures)
         lines.append(s.yellow(f"       advisory: {seams} regressed (not blocking)"))
+
+    if recommendations:
+        lines.append("")
+        lines.append(s.bold("Seam Analyst — recommendations") + s.dim(f"  ({recommendations[0].source})"))
+        for r in recommendations:
+            frag = {"high": s.red, "medium": s.yellow}.get(r.fragility, s.green)(r.fragility)
+            lines.append(f"  {s.bold(r.seam_id)} {s.dim('· ' + r.boundary)}  [fragility: {frag}]")
+            lines.append(s.dim(f"      root cause: {r.root_cause}"))
+            lines.append(f"      {s.green('fix:')} {r.recommended_fix}")
     return "\n".join(lines)
 
 
@@ -112,7 +134,9 @@ def render_text(result: GateResult, *, color: bool | None = None) -> str:
 # markdown
 # --------------------------------------------------------------------------- #
 
-def render_markdown(result: GateResult) -> str:
+def render_markdown(
+    result: GateResult, *, recommendations: list[Recommendation] | None = None
+) -> str:
     decision = result.decision
     head = "✅ **GATE: GO**" if decision.is_go else "🚫 **GATE: NO-GO**"
     lines = [f"## SeamProof — {head}", ""]
@@ -128,6 +152,13 @@ def render_markdown(result: GateResult) -> str:
     for cr in result.results:
         for a in cr.failures:
             lines.append(f"- **{cr.contract.id} / {a.id}** — {a.detail}")
+    if recommendations:
+        lines.append("")
+        lines.append(f"### 🔧 Seam Analyst — recommendations _({recommendations[0].source})_")
+        for r in recommendations:
+            lines.append(f"- **`{r.seam_id}`** ({r.boundary}) · fragility **{r.fragility}**")
+            lines.append(f"  - **Root cause:** {r.root_cause}")
+            lines.append(f"  - **Fix:** {r.recommended_fix}")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -156,7 +187,9 @@ def _contract_payload(cr: ContractResult) -> dict:
     }
 
 
-def render_json(result: GateResult) -> str:
+def render_json(
+    result: GateResult, *, recommendations: list[Recommendation] | None = None
+) -> str:
     payload = {
         "process": result.trace.process,
         "trace_id": result.trace.trace_id,
@@ -169,6 +202,8 @@ def render_json(result: GateResult) -> str:
         },
         "seams": [_contract_payload(cr) for cr in result.results],
     }
+    if recommendations is not None:
+        payload["recommendations"] = [r.as_dict() for r in recommendations]
     return json.dumps(payload, indent=2)
 
 

@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Seam Analyst agent** (`src/seamproof/analyst.py`; `check --recommend` /
+  `publish --recommend`): when a seam fails, an agent on the UiPath **LLM Gateway**
+  returns a root cause, a concrete fix, and a fragility rating — degrading to a
+  deterministic heuristic offline. The recommendation renders in the text/markdown/JSON
+  report and is attached to the seam's Test Manager result. This is Track 3's "agent
+  that recommends fixes / identifies fragile tests," on the testing side.
 - **UiPath coded-automation system under test** (`sut/automation/`): a real
   `uipath.json` project with a dataclass entrypoint, every step instrumented with
   UiPath's `@traced`, recon through the UiPath **LLM Gateway**

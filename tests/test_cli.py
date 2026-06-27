@@ -66,6 +66,14 @@ def test_ingest_then_check_roundtrip(tmp_path, capsys):
     assert code == 1  # the normalised trace still trips seam-1
 
 
+def test_check_recommend_shows_analyst_fix(capsys):
+    code = main(["check", "-c", CONTRACTS, "-t", str(TRACES / "seam1_amount_mismatch.json"), "--recommend"])
+    assert code == 1                                   # the gate still blocks
+    out = capsys.readouterr().out
+    assert "Seam Analyst" in out                       # the agent's section is shown
+    assert "fix:" in out.lower()                       # with a concrete remediation
+
+
 def test_publish_dry_run_prints_plan(capsys):
     code = main([
         "publish", "-c", CONTRACTS, "--otel", OTEL,

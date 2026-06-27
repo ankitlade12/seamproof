@@ -36,6 +36,13 @@ asserting trace-level properties at each agent → robot → human boundary and 
 a **go/no-go gate** with the evidence. A change that breaks a seam blocks the
 release — automatically, in CI and Test Manager.
 
+And the gate doesn't stop at *no*. The **Seam Analyst** — an agent on the UiPath **LLM
+Gateway** (AI Trust Layer) — reads each failed seam and returns a **root cause**, a
+**concrete fix**, and a **fragility** rating, written into the report and onto the
+**Test Manager** result. So the tester itself is agentic, and it hits all four of Track
+3's asks: it **validates** the AI-infused workflow, **recommends fixes**, **identifies
+fragile** seams, and treats seam contracts as executable **requirements**.
+
 The seam-contract model is **general** (it applies to any agent → robot → human
 process); the invoice-exception process is one reference implementation. And it is
 structurally UiPath-only: no other platform has real robots and Action Center human
@@ -52,6 +59,10 @@ tasks as first-class actors in one orchestrated process.
   (no `eval`, no code execution) with six assertion kinds and a severity-aware gate.
   It ingests the OTEL trace and renders text / markdown / JSON / JUnit, plus a
   non-zero exit code that gates CI.
+- **Seam Analyst agent** — when a seam fails, an agent on the UiPath **LLM Gateway**
+  returns a root cause + recommended fix + fragility rating (`check --recommend`),
+  degrading to a deterministic heuristic offline. The fix is also attached to the
+  Test Manager result, so the remediation lives next to the failure.
 - **UiPath integration** — ingest Maestro/agent **OpenTelemetry** traces; publish the
   gate result to **Test Manager** via its v2 REST API (test cases + execution +
   per-seam results); quality-test the agent with **`uipath eval`**.
@@ -62,8 +73,9 @@ tasks as first-class actors in one orchestrated process.
 ## UiPath components used
 
 UiPath Automation Cloud · Maestro (orchestration + OTEL traces) · Agent Builder /
-Coded Agents (Python SDK) · UiPath LLM Gateway (AI Trust Layer) · Action Center
-(human task) · Studio/RPA (posting robot) · Test Cloud / Test Manager (gate results)
+Coded Agents (Python SDK) · UiPath LLM Gateway (AI Trust Layer — recon agent + the
+Seam Analyst) · Action Center (human task) · Studio/RPA (posting robot) · Test Cloud /
+Test Manager (gate results)
 · `uipath` CLI + `uipath eval` · `uipath-langchain` (LangChain on the UiPath
 Gateway) · UiPath for Coding Agents.
 
@@ -89,7 +101,10 @@ Python SDK. **SeamProof itself — the tester** — is authored with a **coding 
   three seam failures.
 - A genuine UiPath coded automation that runs via `uipath run`, with `@traced`,
   LLM Gateway, Action Center, `uipath eval`, and an external LangChain agent.
-- The gate's seams created as managed test cases in a real Test Manager project.
+- The gate's seams created as managed test cases in a real Test Manager project, with
+  a **Finished** execution carrying the per-seam Passed/Failed results.
+- A **Seam Analyst** agent that turns a red gate into an actionable root-cause + fix,
+  on the LLM Gateway, with the recommendation recorded on the Test Manager result.
 
 ## What's next
 
