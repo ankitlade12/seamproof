@@ -306,7 +306,7 @@ seamproof/
 ├── sut/                  # system under test — UiPath Maestro / Agent Builder / RPA exports
 │   └── automation/       # runnable UiPath coded automation (uipath.json, @traced steps) of the same process
 ├── tests/                # unit tests + data-driven scenario regression suite
-├── docs/                 # architecture, seam-contract reference, demo script
+├── docs/                 # architecture, seam-contract reference, runbooks, evidence
 └── .agent/EVALS.md       # brief for the coding agent that authors the seams
 ```
 
