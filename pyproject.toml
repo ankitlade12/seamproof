@@ -9,7 +9,7 @@ description = "The seam tester for agentic processes — assert the agent → ro
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-authors = [{ name = "Ankit Lade" }]
+authors = [{ name = "Ankit Hemant Lade" }]
 keywords = ["uipath", "agentic", "testing", "rpa", "ai-agents", "release-gate", "observability"]
 classifiers = [
   "Development Status :: 4 - Beta",

@@ -304,4 +304,4 @@ SeamProof maps to all four of Track 3's asks for testing agents: **validate AI-i
 
 ## License
 
-[Apache License 2.0](LICENSE) © 2026 Ankit Lade — *test the seams, not just the actors.*
+[Apache License 2.0](LICENSE) © 2026 Ankit Hemant Lade — *test the seams, not just the actors.*
