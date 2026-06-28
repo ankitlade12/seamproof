@@ -30,6 +30,14 @@ report.json
 # Internal planning notes (kept local, not part of the public product)
 SeamProof-DEV-KICKOFF.md
 
+# Hackathon submission drafts — kept local for finishing the entry, not product docs
+docs/devpost-submission.md
+docs/demo-script.md
+docs/demo-recording-kit.md
+docs/presentation-outline.md
+docs/product-feedback.md
+docs/forum-use-case.md
+
 # UiPath coded-automation: generated reference docs, local build cache, secrets
 sut/automation/.agent/
 sut/automation/.claude/
